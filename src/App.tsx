@@ -4,6 +4,8 @@ import {
   Activity,
   BarChart3,
   Brain,
+  BrainCircuit,
+  Building2,
   Check,
   ChevronRight,
   CircleHelp,
@@ -16,14 +18,18 @@ import {
   Menu,
   MessageCircleHeart,
   Plus,
+  Scale,
   ShieldCheck,
   Sparkles,
+  Timer,
   Trash2,
   X,
 } from "lucide-react";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   ResponsiveContainer,
@@ -31,11 +37,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AiActView, CompanyView, ImprintView, PrivacyView } from "./components/CompanyAndLegal";
+import { FocusTimer } from "./components/FocusTimer";
+import { SelfCheck } from "./components/SelfCheck";
+import { ToolNavigator } from "./components/ToolNavigator";
 import { createLocalInsight } from "./lib/analytics";
 import { getAuthRedirectUrl, isSupabaseConfigured, supabase } from "./lib/supabase";
-import type { AiEffect, AiPurpose, AiReflection, CheckIn, CheckInInput } from "./types";
+import type { AiEffect, AiPurpose, AiReflection, CheckIn, CheckInInput, FocusSession, SelfCheckResult, ToolSession } from "./types";
 
-type View = "overview" | "checkin" | "trends" | "data";
+type View = "overview" | "checkin" | "focus" | "selfcheck" | "navigator" | "trends" | "data" | "company" | "ai-act" | "imprint" | "privacy";
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -73,6 +83,12 @@ const demoCheckIns: CheckIn[] = [
   note: null,
 }));
 
+const demoToolSessions: ToolSession[] = [
+  { id: "tool-1", user_id: "demo", tool_name: "Schreib- und Dialogassistent", task: "Gliederung erstellen", started_at: "2026-07-18T09:00:00Z", ended_at: "2026-07-18T09:32:00Z", duration_minutes: 32, effectiveness: 4, burden: 2, notes: null, created_at: "2026-07-18T09:32:00Z" },
+  { id: "tool-2", user_id: "demo", tool_name: "Rechercheassistent mit Quellen", task: "Marktüberblick", started_at: "2026-07-19T12:00:00Z", ended_at: "2026-07-19T12:48:00Z", duration_minutes: 48, effectiveness: 3, burden: 4, notes: null, created_at: "2026-07-19T12:48:00Z" },
+  { id: "tool-3", user_id: "demo", tool_name: "Datenanalyse-Assistent", task: "Tabelle erklären", started_at: "2026-07-20T10:00:00Z", ended_at: "2026-07-20T10:24:00Z", duration_minutes: 24, effectiveness: 5, burden: 2, notes: null, created_at: "2026-07-20T10:24:00Z" },
+];
+
 const scaleLabels: Record<number, string> = {
   1: "sehr niedrig",
   2: "niedrig",
@@ -93,6 +109,9 @@ function App() {
   const [demoMode, setDemoMode] = useState(!isSupabaseConfigured);
   const [view, setView] = useState<View>("overview");
   const [checkIns, setCheckIns] = useState<CheckIn[]>(demoMode ? demoCheckIns : []);
+  const [toolSessions, setToolSessions] = useState<ToolSession[]>(demoMode ? demoToolSessions : []);
+  const [selfChecks, setSelfChecks] = useState<SelfCheckResult[]>([]);
+  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -115,25 +134,41 @@ function App() {
   useEffect(() => {
     if (demoMode) {
       const saved = localStorage.getItem("mindful-ai-demo-checkins");
+      const savedTools = localStorage.getItem("mindful-ai-demo-tools");
+      const savedSelfChecks = localStorage.getItem("mindful-ai-demo-selfchecks");
+      const savedFocus = localStorage.getItem("mindful-ai-demo-focus");
       setCheckIns(saved ? JSON.parse(saved) : demoCheckIns);
+      setToolSessions(savedTools ? JSON.parse(savedTools) : demoToolSessions);
+      setSelfChecks(savedSelfChecks ? JSON.parse(savedSelfChecks) : []);
+      setFocusSessions(savedFocus ? JSON.parse(savedFocus) : []);
       return;
     }
 
     if (!session || !supabase) {
       setCheckIns([]);
+      setToolSessions([]);
+      setSelfChecks([]);
+      setFocusSessions([]);
       return;
     }
 
     setLoadingData(true);
-    supabase
-      .from("check_ins")
-      .select("*")
-      .order("entry_date", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error(error);
-        setCheckIns((data as CheckIn[] | null) ?? []);
-        setLoadingData(false);
-      });
+    Promise.all([
+      supabase.from("check_ins").select("*").order("entry_date", { ascending: false }),
+      supabase.from("tool_sessions").select("*").order("created_at", { ascending: false }),
+      supabase.from("self_checks").select("*").order("created_at", { ascending: false }),
+      supabase.from("focus_sessions").select("*").order("created_at", { ascending: false }),
+    ]).then(([checkInResult, toolResult, selfCheckResult, focusResult]) => {
+      if (checkInResult.error) console.error(checkInResult.error);
+      if (toolResult.error) console.error(toolResult.error);
+      if (selfCheckResult.error) console.error(selfCheckResult.error);
+      if (focusResult.error) console.error(focusResult.error);
+      setCheckIns((checkInResult.data as CheckIn[] | null) ?? []);
+      setToolSessions((toolResult.data as ToolSession[] | null) ?? []);
+      setSelfChecks((selfCheckResult.data as SelfCheckResult[] | null) ?? []);
+      setFocusSessions((focusResult.data as FocusSession[] | null) ?? []);
+      setLoadingData(false);
+    });
   }, [demoMode, session]);
 
   if (!authReady) {
@@ -161,17 +196,19 @@ function App() {
 
   const navigation = [
     { id: "overview" as const, label: "Übersicht", icon: Heart },
-    { id: "checkin" as const, label: "Check-in", icon: Plus },
-    { id: "trends" as const, label: "Meine Trends", icon: BarChart3 },
-    { id: "data" as const, label: "Daten & Schutz", icon: ShieldCheck },
+    { id: "focus" as const, label: "Fokus", icon: Timer },
+    { id: "selfcheck" as const, label: "Selbstcheck", icon: Brain },
+    { id: "navigator" as const, label: "KI-Navigator", icon: BrainCircuit },
+    { id: "trends" as const, label: "Trends", icon: BarChart3 },
+    { id: "company" as const, label: "Unternehmen", icon: Building2 },
   ];
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <button className="brand" onClick={() => navigate("overview")} aria-label="Zur Übersicht">
-          <span className="brand-mark"><Leaf size={19} /></span>
-          <span>Mindful AI</span>
+          <img className="brand-logo" src={`${import.meta.env.BASE_URL}undercover-trainer-logo.png`} alt="The Undercover Trainer" />
+          <span className="brand-product">Mindful AI</span>
         </button>
         <nav className="desktop-nav" aria-label="Hauptnavigation">
           {navigation.map((item) => (
@@ -208,7 +245,7 @@ function App() {
 
       <main>
         {view === "overview" && (
-          <Overview checkIns={checkIns} loading={loadingData} onNavigate={navigate} />
+          <Overview checkIns={checkIns} toolSessions={toolSessions} loading={loadingData} onNavigate={navigate} />
         )}
         {view === "checkin" && (
           <CheckInForm
@@ -224,22 +261,44 @@ function App() {
             }}
           />
         )}
-        {view === "trends" && <Trends checkIns={checkIns} demoMode={demoMode} />}
+        {view === "focus" && <FocusTimer demoMode={demoMode} session={session} onSaved={(item) => setFocusSessions((current) => {
+          const next = [item, ...current];
+          if (demoMode) localStorage.setItem("mindful-ai-demo-focus", JSON.stringify(next));
+          return next;
+        })}/>}
+        {view === "selfcheck" && <SelfCheck demoMode={demoMode} session={session} onSaved={(item) => setSelfChecks((current) => {
+          const next = [item, ...current];
+          if (demoMode) localStorage.setItem("mindful-ai-demo-selfchecks", JSON.stringify(next));
+          return next;
+        })}/>}
+        {view === "navigator" && <ToolNavigator demoMode={demoMode} session={session} onSaved={(item) => setToolSessions((current) => {
+          const next = [item, ...current];
+          if (demoMode) localStorage.setItem("mindful-ai-demo-tools", JSON.stringify(next));
+          return next;
+        })}/>}
+        {view === "trends" && <Trends checkIns={checkIns} toolSessions={toolSessions} selfChecks={selfChecks} focusSessions={focusSessions} demoMode={demoMode} />}
         {view === "data" && (
           <DataAndPrivacy
             checkIns={checkIns}
+            toolSessions={toolSessions}
+            selfChecks={selfChecks}
+            focusSessions={focusSessions}
             demoMode={demoMode}
-            onCleared={() => setCheckIns([])}
+            onCleared={() => { setCheckIns([]); setToolSessions([]); setSelfChecks([]); setFocusSessions([]); }}
           />
         )}
+        {view === "company" && <CompanyView/>}
+        {view === "ai-act" && <AiActView/>}
+        {view === "imprint" && <ImprintView/>}
+        {view === "privacy" && <PrivacyView/>}
       </main>
 
       <footer>
         <div>
-          <span className="footer-brand"><Leaf size={17} /> Mindful AI</span>
+          <span className="footer-brand"><Leaf size={17} /> Mindful AI · The Undercover Trainer</span>
           <p>Ein Reflexionswerkzeug – keine medizinische Diagnose oder Therapie.</p>
         </div>
-        <p>Bei akuter Gefahr: 112 · Telefonseelsorge: 0800 111 0 111</p>
+        <div className="footer-right"><div className="footer-links"><button onClick={() => navigate("data")}>Daten & Schutz</button><button onClick={() => navigate("ai-act")}><Scale size={14}/> EU AI Act</button><button onClick={() => navigate("imprint")}>Impressum</button><button onClick={() => navigate("privacy")}>Datenschutz</button></div><p>Bei akuter Gefahr: 112 · Telefonseelsorge: 0800 111 0 111</p></div>
       </footer>
     </div>
   );
@@ -257,6 +316,7 @@ function FullPageLoader() {
 
 function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
   const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -279,6 +339,11 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
 
   async function signInWithGoogle() {
     if (!supabase) return;
+    if (!consent) {
+      setStatus("error");
+      setMessage("Bitte bestätige zuerst die freiwillige Verarbeitung deiner Gesundheitsangaben.");
+      return;
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: getAuthRedirectUrl() },
@@ -292,7 +357,7 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
   return (
     <div className="welcome-page">
       <header className="welcome-header">
-        <div className="brand"><span className="brand-mark"><Leaf size={19} /></span> Mindful AI</div>
+        <div className="brand"><img className="brand-logo" src={`${import.meta.env.BASE_URL}undercover-trainer-logo.png`} alt="The Undercover Trainer"/><span className="brand-product">Mindful AI</span></div>
         <span className="privacy-chip"><LockKeyhole size={15} /> Datenschutz zuerst</span>
       </header>
       <main className="welcome-main">
@@ -322,6 +387,7 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
               placeholder="du@beispiel.de"
               required
             />
+            <label className="consent-check"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} required/><span>Ich willige ausdrücklich und freiwillig ein, dass meine Angaben zum emotionalen Befinden als Gesundheitsdaten für die persönlichen App-Funktionen verarbeitet werden. Ich kann die Einwilligung jederzeit für die Zukunft widerrufen und meine Daten löschen.</span></label>
             <button className="primary-button full" disabled={status === "sending"}>
               {status === "sending" ? <LoaderCircle className="spin" size={18} /> : <ChevronRight size={18} />}
               Anmeldelink senden
@@ -329,18 +395,19 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
           </form>
           {message && <div className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
           <div className="divider"><span>oder</span></div>
-          <button className="secondary-button full" onClick={signInWithGoogle}>Mit Google anmelden</button>
+          <button className="secondary-button full" onClick={signInWithGoogle} disabled={!consent}>Mit Google anmelden</button>
           <button className="text-button" onClick={onStartDemo}>App zuerst im Demo-Modus ansehen</button>
-          <small>Mit der Anmeldung bestätigst du, dass dieses Angebot keine medizinische Beratung ersetzt.</small>
+          <details className="auth-privacy"><summary>Kurzer Datenschutzhinweis</summary><p>GitHub Pages liefert die Oberfläche aus, Supabase verarbeitet Anmeldung und deine privaten App-Daten. Die optionale KI-Reflexion startet nur auf deinen Klick und überträgt keine freien Notizen. Dieses Angebot ersetzt keine medizinische Beratung.</p></details>
         </section>
       </main>
     </div>
   );
 }
 
-function Overview({ checkIns, loading, onNavigate }: { checkIns: CheckIn[]; loading: boolean; onNavigate: (view: View) => void }) {
+function Overview({ checkIns, toolSessions, loading, onNavigate }: { checkIns: CheckIn[]; toolSessions: ToolSession[]; loading: boolean; onNavigate: (view: View) => void }) {
   const latest = checkIns[0];
   const insight = createLocalInsight(checkIns);
+  const trackedMinutes = toolSessions.reduce((sum, item) => sum + item.duration_minutes, 0);
 
   return (
     <div className="page-container">
@@ -348,8 +415,8 @@ function Overview({ checkIns, loading, onNavigate }: { checkIns: CheckIn[]; load
         <div>
           <span className="eyebrow">Dein persönlicher Rückblick</span>
           <h1>Hallo, wie fühlst du dich heute?</h1>
-          <p>Ein kurzer Check-in dauert weniger als zwei Minuten und hilft dir, Muster bewusster wahrzunehmen.</p>
-          <button className="primary-button" onClick={() => onNavigate("checkin")}><Plus size={18} /> Heutigen Check-in starten</button>
+          <p>Reflektiere deine KI-Nutzung, schütze deine Konzentration und finde den nächsten gesunden Arbeitsschritt.</p>
+          <div className="hero-actions"><button className="primary-button" onClick={() => onNavigate("checkin")}><Plus size={18} /> Heutigen Check-in</button><button className="secondary-button" onClick={() => onNavigate("focus")}><Timer size={18}/> 25-Minuten-Fokus</button></div>
         </div>
         <div className="hero-orbit" aria-hidden="true">
           <div className="orbit orbit-one"></div>
@@ -365,7 +432,13 @@ function Overview({ checkIns, loading, onNavigate }: { checkIns: CheckIn[]; load
           <section className="stat-grid" aria-label="Letzter Check-in">
             <MetricCard icon={<Heart />} label="Stimmung" value={latest ? `${latest.mood} / 5` : "–"} tone="coral" />
             <MetricCard icon={<Activity />} label="Stress" value={latest ? `${latest.stress} / 5` : "–"} tone="yellow" />
-            <MetricCard icon={<MessageCircleHeart />} label="KI-Zeit" value={latest ? `${latest.ai_minutes} Min.` : "–"} tone="blue" />
+            <MetricCard icon={<MessageCircleHeart />} label="Erfasste Tool-Zeit" value={trackedMinutes ? `${trackedMinutes} Min.` : latest ? `${latest.ai_minutes} Min.` : "–"} tone="blue" />
+          </section>
+
+          <section className="quick-tools" aria-label="Direkte Werkzeuge">
+            <button className="quick-tool" onClick={() => onNavigate("selfcheck")}><span><Brain size={22}/></span><div><strong>KI-Überforderung prüfen</strong><small>7 geführte Schritte · dein KI-Kompass</small></div><ChevronRight size={18}/></button>
+            <button className="quick-tool" onClick={() => onNavigate("navigator")}><span><BrainCircuit size={22}/></span><div><strong>Passendes KI-Tool finden</strong><small>Problem klären · Nutzung erfassen</small></div><ChevronRight size={18}/></button>
+            <button className="quick-tool" onClick={() => onNavigate("company")}><span><Building2 size={22}/></span><div><strong>Für Unternehmen</strong><small>Gesunde KI-Arbeit im Mittelstand</small></div><ChevronRight size={18}/></button>
           </section>
 
           <section className="two-column">
@@ -398,9 +471,56 @@ function Overview({ checkIns, loading, onNavigate }: { checkIns: CheckIn[]; load
             <ShieldCheck size={24} />
             <div><strong>Deine Angaben gehören dir.</strong><p>Sie werden verschlüsselt übertragen und nur deinem Konto zugeordnet.</p></div>
           </section>
+
+          <BrandStory />
         </>
       )}
     </div>
+  );
+}
+
+function BrandStory() {
+  const baseUrl = import.meta.env.BASE_URL;
+
+  return (
+    <section className="brand-story" aria-labelledby="brand-story-title">
+      <div className="brand-story-copy">
+        <span className="eyebrow"><Sparkles size={15} /> Über The Undercover Trainer</span>
+        <h2 id="brand-story-title">Rascha Al-Nemer</h2>
+        <p>
+          Rascha Al-Nemer ist Mentalcoach, Kommunikationstrainerin und Speakerin mit dem Schwerpunkt
+          emotionale Gesundheit. Seit der Gründung ihres Unternehmens im Jahr 2020 begleitet sie Menschen
+          und Unternehmen mit Trainings, Vorträgen und Coachings.
+        </p>
+        <p>
+          Im Mittelpunkt stehen emotionale Intelligenz, Stress- und Konfliktmanagement, Kommunikation,
+          Selbstführung und mentale Klarheit. Mindful AI überträgt diesen Ansatz auf einen bewussten,
+          menschlich gesunden Umgang mit KI im Arbeitsalltag.
+        </p>
+        <div className="brand-story-actions">
+          <a className="secondary-button" href="https://the-undercover-trainer.com/ueber_uns.html" target="_blank" rel="noreferrer">Mehr über Rascha</a>
+          <a className="text-link" href="mailto:trainer@the-undercover-trainer.com">Kontakt aufnehmen <ChevronRight size={17} /></a>
+        </div>
+      </div>
+      <div className="brand-media-grid">
+        <figure className="brand-media brand-artwork">
+          <img
+            src={`${baseUrl}undercover-trainer-ai-manager.jpg`}
+            alt="The Undercover Trainer und AI Manager – visuelle Verbindung von KI, Training, Coaching und emotionaler Gesundheit"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>Die Verbindung von KI-Kompetenz und emotionaler Gesundheit</figcaption>
+        </figure>
+        <figure className="brand-media brand-video">
+          <video controls playsInline preload="metadata" aria-label="Video von The Undercover Trainer">
+            <source src={`${baseUrl}undercover-trainer-intro.mp4`} type="video/mp4" />
+            Dein Browser kann dieses Video nicht abspielen.
+          </video>
+          <figcaption>Ein kurzer Einblick – du entscheidest selbst, ob du das Video startest</figcaption>
+        </figure>
+      </div>
+    </section>
   );
 }
 
@@ -506,11 +626,22 @@ function CheckInForm({ demoMode, session, onSaved }: { demoMode: boolean; sessio
   );
 }
 
-function Trends({ checkIns, demoMode }: { checkIns: CheckIn[]; demoMode: boolean }) {
+function Trends({ checkIns, toolSessions, selfChecks, focusSessions, demoMode }: { checkIns: CheckIn[]; toolSessions: ToolSession[]; selfChecks: SelfCheckResult[]; focusSessions: FocusSession[]; demoMode: boolean }) {
   const [reflection, setReflection] = useState<AiReflection | null>(null);
+  const [aiConsent, setAiConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const chartData = useMemo(() => [...checkIns].reverse().map((item) => ({ ...item, date: formatDate(item.entry_date) })), [checkIns]);
+  const toolChartData = useMemo(() => {
+    const grouped = new Map<string, { name: string; minutes: number; effectiveness: number; burden: number; count: number }>();
+    toolSessions.forEach((item) => {
+      const shortName = item.tool_name.replace("assistent", "").replace("Assistent", "").trim();
+      const current = grouped.get(shortName) ?? { name: shortName, minutes: 0, effectiveness: 0, burden: 0, count: 0 };
+      current.minutes += item.duration_minutes; current.effectiveness += item.effectiveness; current.burden += item.burden; current.count += 1;
+      grouped.set(shortName, current);
+    });
+    return [...grouped.values()].map((item) => ({ ...item, effectiveness: Number((item.effectiveness / item.count).toFixed(1)), burden: Number((item.burden / item.count).toFixed(1)) }));
+  }, [toolSessions]);
 
   async function createReflection() {
     setLoading(true);
@@ -547,13 +678,13 @@ function Trends({ checkIns, demoMode }: { checkIns: CheckIn[]; demoMode: boolean
           <div className="chart-wrap">
             <ResponsiveContainer width="100%" height={340}>
               <AreaChart data={chartData} margin={{ top: 16, right: 14, left: -20, bottom: 0 }}>
-                <defs><linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#40776a" stopOpacity={0.3}/><stop offset="95%" stopColor="#40776a" stopOpacity={0}/></linearGradient></defs>
+                <defs><linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#25b7c0" stopOpacity={0.3}/><stop offset="95%" stopColor="#25b7c0" stopOpacity={0}/></linearGradient></defs>
                 <CartesianGrid strokeDasharray="4 6" stroke="#dfe3dc" />
                 <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis domain={[0, 5]} tickLine={false} axisLine={false} fontSize={12} />
                 <Tooltip contentStyle={{ borderRadius: 14, border: "1px solid #dfe3dc" }} />
                 <Legend />
-                <Area type="monotone" name="Stimmung" dataKey="mood" stroke="#40776a" fill="url(#moodFill)" strokeWidth={3} />
+                <Area type="monotone" name="Stimmung" dataKey="mood" stroke="#25b7c0" fill="url(#moodFill)" strokeWidth={3} />
                 <Area type="monotone" name="Stress" dataKey="stress" stroke="#dd795e" fill="transparent" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -561,14 +692,28 @@ function Trends({ checkIns, demoMode }: { checkIns: CheckIn[]; demoMode: boolean
         ) : <div className="empty-state tall">Noch keine Daten für ein Diagramm vorhanden.</div>}
       </section>
 
+      <section className="trend-summary">
+        <MetricCard icon={<Timer/>} label="Fokusphasen" value={`${focusSessions.filter((item) => item.completed).length}`} tone="blue"/>
+        <MetricCard icon={<Brain/>} label="KI-Kompass" value={selfChecks[0] ? "abgeschlossen" : "–"} tone="yellow"/>
+        <MetricCard icon={<BrainCircuit/>} label="Tool-Sitzungen" value={`${toolSessions.length}`} tone="coral"/>
+      </section>
+
+      <section className="card chart-card tool-chart-card">
+        <div className="card-heading between"><div><span className="eyebrow">Nutzungsanalyse</span><h2>Zeit, Nutzen und Belastung</h2></div><span className="chart-count">{toolSessions.reduce((sum, item) => sum + item.duration_minutes, 0)} Minuten</span></div>
+        {toolChartData.length ? <div className="chart-wrap"><ResponsiveContainer width="100%" height={320}><BarChart data={toolChartData} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}><CartesianGrid strokeDasharray="4 6" stroke="#d5e9ea"/><XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11}/><YAxis tickLine={false} axisLine={false} fontSize={12}/><Tooltip contentStyle={{ borderRadius: 14, border: "1px solid #d5e9ea" }}/><Legend/><Bar name="Minuten" dataKey="minutes" fill="#77cbd1" radius={[7,7,0,0]}/><Bar name="Effektivität (1–5)" dataKey="effectiveness" fill="#168d95" radius={[7,7,0,0]}/><Bar name="Belastung (1–5)" dataKey="burden" fill="#dd795e" radius={[7,7,0,0]}/></BarChart></ResponsiveContainer></div> : <div className="empty-state">Starte eine Nutzung im KI-Navigator, um Zeit, Nutzen und Belastung zu vergleichen.</div>}
+        <p className="caveat">Hoher Nutzen bei dauerhaft hoher Belastung ist kein nachhaltiger Gewinn. Suche nach kürzeren Sitzungen, klareren Zielen oder einem einfacheren Werkzeug.</p>
+      </section>
+
       <section className="card ai-card">
-        <div className="ai-card-header"><span className="ai-icon"><Sparkles size={24} /></span><div><span className="eyebrow">Optionale KI-Reflexion</span><h2>Deine Daten verständlich zusammengefasst</h2></div></div>
-        <p>Beim Klick werden ausschließlich die letzten 14 Zahlenwerte und Kategorien verarbeitet – niemals deine freien Tagebuchtexte.</p>
-        {!reflection && <button className="primary-button" onClick={createReflection} disabled={loading || checkIns.length < 3}>{loading ? <LoaderCircle className="spin" size={18} /> : <Brain size={18} />} Reflexion erstellen</button>}
+        <div className="ai-card-header"><span className="ai-icon"><Sparkles size={24} /></span><div><span className="eyebrow">Optionale KI-Reflexion · KI klar gekennzeichnet</span><h2>Deine eigenen Angaben zusammengefasst</h2></div></div>
+        <div className="ai-transparency"><Scale size={19}/><div><strong>Was die KI tut – und was nicht</strong><p>Ein Sprachmodell fasst höchstens 14 von dir selbst eingegebene Zahlenwerte und Kategorien zusammen. Es erkennt keine Emotionen, bewertet keine Arbeitsleistung, trifft keine Entscheidung und übermittelt keine freien Tagebuchtexte. Du prüfst selbst, ob die Ausgabe für dich passt.</p></div></div>
+        {!reflection && <label className="consent-check ai-consent"><input type="checkbox" checked={aiConsent} onChange={(event) => setAiConsent(event.target.checked)}/><span>Ich möchte diese einzelne KI-Auswertung jetzt starten und weiß, dass das Ergebnis fehlerhaft sein kann. Meine freie Notiz wird nicht übertragen.</span></label>}
+        {!reflection && <button className="primary-button" onClick={createReflection} disabled={loading || checkIns.length < 3 || !aiConsent}>{loading ? <LoaderCircle className="spin" size={18} /> : <Brain size={18} />} Gekennzeichnete KI-Reflexion erstellen</button>}
         {checkIns.length < 3 && <small>Mindestens drei Check-ins sind erforderlich.</small>}
         {error && <div className="form-message error">{error}</div>}
         {reflection && (
           <div className="reflection-result">
+            <div className="ai-output-label"><Sparkles size={16}/><strong>KI-generierte Reflexion</strong><span>Automatisch erstellt · von dir zu prüfen</span></div>
             <h3>{reflection.headline}</h3><p>{reflection.summary}</p>
             <div className="reflection-columns"><div><h4>Beobachtungen</h4><ul>{reflection.observations.map((item) => <li key={item}>{item}</li>)}</ul></div><div><h4>Fragen für dich</h4><ul>{reflection.reflection_questions.map((item) => <li key={item}>{item}</li>)}</ul></div></div>
             <p className="caveat">{reflection.safety_note}</p>
@@ -579,11 +724,11 @@ function Trends({ checkIns, demoMode }: { checkIns: CheckIn[]; demoMode: boolean
   );
 }
 
-function DataAndPrivacy({ checkIns, demoMode, onCleared }: { checkIns: CheckIn[]; demoMode: boolean; onCleared: () => void }) {
+function DataAndPrivacy({ checkIns, toolSessions, selfChecks, focusSessions, demoMode, onCleared }: { checkIns: CheckIn[]; toolSessions: ToolSession[]; selfChecks: SelfCheckResult[]; focusSessions: FocusSession[]; demoMode: boolean; onCleared: () => void }) {
   const [status, setStatus] = useState("");
 
   function exportData() {
-    const blob = new Blob([JSON.stringify(checkIns, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), check_ins: checkIns, tool_sessions: toolSessions, self_checks: selfChecks, focus_sessions: focusSessions }, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `mindful-ai-export-${today}.json`;
@@ -592,29 +737,32 @@ function DataAndPrivacy({ checkIns, demoMode, onCleared }: { checkIns: CheckIn[]
   }
 
   async function clearData() {
-    if (!window.confirm("Möchtest du wirklich alle Check-ins unwiderruflich löschen?")) return;
+    if (!window.confirm("Möchtest du wirklich alle Check-ins, Selbstchecks, Tool- und Fokussitzungen unwiderruflich löschen?")) return;
     if (demoMode) {
       localStorage.removeItem("mindful-ai-demo-checkins");
+      localStorage.removeItem("mindful-ai-demo-tools");
+      localStorage.removeItem("mindful-ai-demo-selfchecks");
+      localStorage.removeItem("mindful-ai-demo-focus");
       onCleared();
       setStatus("Die Demo-Daten wurden gelöscht.");
       return;
     }
-    const { error } = await supabase!.from("check_ins").delete().not("id", "is", null);
-    if (error) setStatus("Das Löschen ist fehlgeschlagen. Bitte versuche es erneut.");
-    else { onCleared(); setStatus("Deine Check-ins wurden gelöscht."); }
+    const results = await Promise.all(["check_ins", "tool_sessions", "self_checks", "focus_sessions"].map((table) => supabase!.from(table).delete().not("id", "is", null)));
+    if (results.some((result) => result.error)) setStatus("Mindestens ein Datensatz konnte nicht gelöscht werden. Bitte prüfe die Supabase-Einrichtung.");
+    else { onCleared(); setStatus("Deine persönlichen App-Daten wurden gelöscht."); }
   }
 
   return (
     <div className="page-container narrow-page">
       <header className="page-heading"><span className="eyebrow">Kontrolle behalten</span><h1>Deine Daten & dein Schutz</h1><p>Du entscheidest, was gespeichert, exportiert oder gelöscht wird.</p></header>
       <section className="privacy-grid">
-        <article className="card privacy-card"><span><LockKeyhole /></span><h2>Geschützt übertragen</h2><p>Die Verbindung zu GitHub Pages und Supabase verwendet TLS. Die Datenbank liegt in einer europäischen Region.</p></article>
+        <article className="card privacy-card"><span><LockKeyhole /></span><h2>Geschützt übertragen</h2><p>Die Verbindung zu GitHub Pages und Supabase verwendet TLS. Die Einrichtung ist für eine europäische Supabase-Region vorgesehen.</p></article>
         <article className="card privacy-card"><span><ShieldCheck /></span><h2>Nur dein Zugriff</h2><p>Supabase Row-Level Security beschränkt jeden Eintrag auf dein angemeldetes Konto.</p></article>
         <article className="card privacy-card"><span><CircleHelp /></span><h2>Keine Diagnose</h2><p>Alle Hinweise sind Reflexionshilfen. Die App bewertet keine psychischen Erkrankungen.</p></article>
       </section>
       <section className="card data-actions">
-        <div><h2>Deine Check-ins</h2><p>{checkIns.length} Einträge sind aktuell gespeichert.</p></div>
-        <div><button className="secondary-button" onClick={exportData} disabled={!checkIns.length}><Download size={18} /> Daten exportieren</button><button className="danger-button" onClick={clearData} disabled={!checkIns.length}><Trash2 size={18} /> Alle Check-ins löschen</button></div>
+        <div><h2>Deine App-Daten</h2><p>{checkIns.length + toolSessions.length + selfChecks.length + focusSessions.length} Einträge sind aktuell gespeichert.</p></div>
+        <div><button className="secondary-button" onClick={exportData} disabled={!checkIns.length && !toolSessions.length && !selfChecks.length && !focusSessions.length}><Download size={18} /> Daten exportieren</button><button className="danger-button" onClick={clearData} disabled={!checkIns.length && !toolSessions.length && !selfChecks.length && !focusSessions.length}><Trash2 size={18} /> Alle Daten löschen</button></div>
         {status && <div className="form-message">{status}</div>}
       </section>
       <section className="help-card"><MessageCircleHeart size={25} /><div><h2>Wenn du Unterstützung brauchst</h2><p>Sprich mit einer vertrauten Person oder professionellen Beratungsstelle. Bei unmittelbarer Gefahr wähle 112. Die Telefonseelsorge erreichst du unter 0800 111 0 111.</p></div></section>

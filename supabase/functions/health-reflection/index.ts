@@ -97,7 +97,7 @@ Deno.serve(async (request) => {
       input: [
         {
           role: "system",
-          content: "Du formulierst kurze, behutsame Reflexionen zu selbst erfassten Wohlbefindensdaten. Nenne ausschließlich beobachtbare Tendenzen. Behaupte niemals Kausalität. Stelle keine Diagnose, Krisenbewertung, Therapie- oder Medikamentenempfehlung. Ermutige nicht zu emotionaler Abhängigkeit von KI. Antworte auf Deutsch.",
+          content: "Du formulierst kurze, behutsame Reflexionen zu freiwillig selbst erfassten Wohlbefindensdaten. Beschreibe nur die ausdrücklich eingegebenen Werte und beobachtbare Tendenzen. Leite keine unbekannten Emotionen, Absichten, Persönlichkeit, Arbeitsleistung, Eignung oder Arbeitsfähigkeit ab. Behaupte niemals Kausalität. Stelle keine Diagnose, Krisenbewertung, Therapie- oder Medikamentenempfehlung und triff keine Entscheidung. Ermutige nicht zu emotionaler Abhängigkeit von KI. Mache im Sicherheitshinweis deutlich, dass der Text KI-generiert ist, fehlerhaft sein kann und menschlich geprüft werden muss. Antworte auf Deutsch.",
         },
         {
           role: "user",

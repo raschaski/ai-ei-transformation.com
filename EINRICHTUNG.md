@@ -16,7 +16,7 @@ Für den Demo-Modus musst du nichts konfigurieren. Für echte Benutzerkonten und
 3. Kopiere den vollständigen Inhalt aus `supabase/schema.sql` hinein.
 4. Klicke auf **Run**.
 
-Das Skript erstellt die Tabelle `check_ins`. Die Zugriffsregeln sorgen dafür, dass ein angemeldeter Nutzer ausschließlich seine eigenen Einträge lesen, ändern und löschen kann.
+Das Skript erstellt die Tabellen `check_ins`, `tool_sessions`, `self_checks` und `focus_sessions`. Die Zugriffsregeln sorgen dafür, dass ein angemeldeter Nutzer ausschließlich seine eigenen Einträge lesen und – je nach Datentyp – anlegen, ändern oder löschen kann.
 
 ## 3. Passwortlose Anmeldung konfigurieren
 
@@ -72,22 +72,30 @@ Die Datei `supabase/functions/health-reflection/index.ts` enthält die fertige E
 supabase login
 supabase link --project-ref DEINE_PROJEKT_ID
 supabase functions deploy health-reflection
+supabase functions deploy overwhelm-compass
 supabase secrets set OPENAI_API_KEY=DEIN_OPENAI_API_SCHLUESSEL
 supabase secrets set APP_ORIGIN=https://raschaski.github.io
 ```
 
-Der OpenAI-Schlüssel gehört ausschließlich in die Supabase-Secrets und niemals in GitHub, `.env.local` oder den Browser-Code.
+Der OpenAI-Schlüssel gehört ausschließlich in die Supabase-Secrets und niemals in GitHub, `.env.local`, eine HTML-Datei oder den Browser-Code. Die alte Testdatei mit einem direkt eingebetteten Schlüssel darf nicht veröffentlicht werden.
 
 ## 7. Vor einer öffentlichen Veröffentlichung
 
-- eigene Datenschutzerklärung ergänzen
-- Impressum prüfen
+- die in der App enthaltene Datenschutzerklärung juristisch prüfen und alle Platzhalter zu Anbietern, Verträgen und Löschfristen konkretisieren
+- Impressum juristisch prüfen
 - Einwilligungstexte prüfen lassen
 - Aufbewahrungs- und Löschfristen festlegen
+- Auftragsverarbeitungsverträge mit Supabase, E-Mail- und KI-Anbietern abschließen und Drittlandtransfers dokumentieren
+- bei Unternehmenseinsatz Betriebsrat, Datenschutzbeauftragte und Beschäftigtendatenschutz frühzeitig einbeziehen
+- individuelle Gesundheitsdaten niemals für Leistungs- oder Verhaltenskontrollen bereitstellen
 - professionelles SMTP für Magic Links einrichten
 - Krisenkontakte für die vorgesehene Zielregion prüfen
 - Sicherheits- und Datenschutzprüfung durchführen
 - keine medizinische Wirksamkeit versprechen
+- die [EU-AI-ACT-CHECKLISTE.md](EU-AI-ACT-CHECKLISTE.md) vollständig bearbeiten und verantwortliche Person benennen
+- KI-Funktion, Modell, Anbieter, Version und dokumentierten Verwendungszweck in einem Änderungsregister pflegen
+- KI-Kompetenzschulung für alle Personen dokumentieren, die die KI-Funktion im Namen des Anbieters oder eines Unternehmens betreiben oder unterstützen
+- sicherstellen, dass die App niemals zur Emotionserkennung, Beschäftigtenüberwachung oder Personalentscheidung verwendet wird
 
 ## Häufiges Problem: Die App zeigt nur den Demo-Modus
 

@@ -1,0 +1,133 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { BellRing, Droplets, Footprints, Pause, Play, RotateCcw, Wind } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import type { FocusSession } from "../types";
+
+const FOCUS_SECONDS = 25 * 60;
+const BREAK_SECONDS = 5 * 60;
+
+const breakIdeas = [
+  { title: "Wasser trinken", text: "Steh auf, trink ein Glas Wasser und schau dabei kurz in die Ferne.", icon: Droplets },
+  { title: "4–6-Atmung", text: "Atme 4 Sekunden ein und 6 Sekunden aus – sechs ruhige Runden lang.", icon: Wind },
+  { title: "Bewegung aktivieren", text: "Kreise Schultern und Handgelenke, dann gehe 60 Sekunden durch den Raum.", icon: Footprints },
+  { title: "Augen entlasten", text: "Blicke für 20 Sekunden auf einen weit entfernten Punkt und blinzle bewusst.", icon: BellRing },
+];
+
+function formatTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const rest = (seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${rest}`;
+}
+
+export function FocusTimer({ demoMode, session, onSaved }: { demoMode: boolean; session: Session | null; onSaved: (item: FocusSession) => void }) {
+  const [phase, setPhase] = useState<"focus" | "break">("focus");
+  const [remaining, setRemaining] = useState(FOCUS_SECONDS);
+  const [running, setRunning] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [ideaIndex, setIdeaIndex] = useState(0);
+  const startedAt = useRef<string | null>(null);
+  const idea = breakIdeas[ideaIndex % breakIdeas.length];
+  const circumference = 2 * Math.PI * 116;
+  const total = phase === "focus" ? FOCUS_SECONDS : BREAK_SECONDS;
+  const offset = circumference * (1 - remaining / total);
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = window.setInterval(() => setRemaining((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [running]);
+
+  useEffect(() => {
+    document.title = running ? `${formatTime(remaining)} · ${phase === "focus" ? "Fokus" : "Pause"}` : "Mindful AI";
+    if (remaining !== 0 || !running) return;
+    setRunning(false);
+    setFinished(true);
+    if ("vibrate" in navigator) navigator.vibrate([180, 80, 180]);
+    if (phase === "focus") void saveFocusSession();
+  }, [remaining, running, phase]);
+
+  useEffect(() => () => { document.title = "Mindful AI"; }, []);
+
+  async function saveFocusSession() {
+    const end = new Date().toISOString();
+    const item: FocusSession = {
+      id: crypto.randomUUID(), user_id: session?.user.id ?? "demo", started_at: startedAt.current ?? end,
+      ended_at: end, duration_minutes: 25, break_activity: idea.title, completed: true, created_at: end,
+    };
+    if (demoMode) {
+      onSaved(item);
+      return;
+    }
+    if (!supabase || !session) return;
+    const { data, error } = await supabase.from("focus_sessions").insert({
+      user_id: session.user.id, started_at: item.started_at, ended_at: item.ended_at,
+      duration_minutes: 25, break_activity: idea.title, completed: true,
+    }).select().single();
+    if (!error && data) onSaved(data as FocusSession);
+  }
+
+  function toggle() {
+    if (!startedAt.current && phase === "focus") startedAt.current = new Date().toISOString();
+    setRunning((value) => !value);
+  }
+
+  function reset(nextPhase = phase) {
+    setRunning(false);
+    setFinished(false);
+    setPhase(nextPhase);
+    setRemaining(nextPhase === "focus" ? FOCUS_SECONDS : BREAK_SECONDS);
+    if (nextPhase === "focus") startedAt.current = null;
+  }
+
+  function switchPhase(nextPhase: "focus" | "break") {
+    if (nextPhase === "break") setIdeaIndex((value) => value + 1);
+    reset(nextPhase);
+  }
+
+  const status = useMemo(() => phase === "focus" ? "Eine Aufgabe. Ein KI-Tool. Keine Nebenfenster." : idea.text, [phase, idea.text]);
+
+  return (
+    <div className="page-container focus-page">
+      <header className="page-heading">
+        <span className="eyebrow">25 Minuten, die dir gehören</span>
+        <h1>Fokus mit gesunder Pause</h1>
+        <p>Der Timer strukturiert deine KI-Arbeit. Nach jeder Einheit erinnert er dich sichtbar und per Vibration – sofern dein Gerät das unterstützt – an eine fünfminütige Regeneration.</p>
+      </header>
+
+      <section className="timer-layout">
+        <article className="card timer-card">
+          <div className="timer-tabs" role="tablist" aria-label="Timerphase">
+            <button className={phase === "focus" ? "active" : ""} onClick={() => switchPhase("focus")}>25 Min. Fokus</button>
+            <button className={phase === "break" ? "active" : ""} onClick={() => switchPhase("break")}>5 Min. Pause</button>
+          </div>
+          <div className="timer-ring">
+            <svg viewBox="0 0 260 260" aria-hidden="true"><circle className="timer-track" cx="130" cy="130" r="116"/><circle className="timer-progress" cx="130" cy="130" r="116" strokeDasharray={circumference} strokeDashoffset={offset}/></svg>
+            <div><span>{phase === "focus" ? "Fokus" : "Pause"}</span><strong>{formatTime(remaining)}</strong><small>{running ? "läuft" : finished ? "beendet" : "bereit"}</small></div>
+          </div>
+          <p className="timer-status">{status}</p>
+          <div className="timer-actions">
+            <button className="primary-button" onClick={toggle}>{running ? <Pause size={19}/> : <Play size={19}/>} {running ? "Pausieren" : "Starten"}</button>
+            <button className="secondary-button" onClick={() => reset()}><RotateCcw size={18}/> Zurücksetzen</button>
+          </div>
+        </article>
+
+        <aside className="card break-card">
+          <span className="soft-icon"><idea.icon size={22}/></span>
+          <span className="eyebrow">Nächste Mikro-Pause</span>
+          <h2>{idea.title}</h2>
+          <p>{idea.text}</p>
+          <button className="text-link" onClick={() => setIdeaIndex((value) => value + 1)}>Anderen Pausenimpuls wählen</button>
+          <div className="pause-rule"><strong>Gesunde Arbeitsregel</strong><p>Nach vier Fokusphasen: 15–30 Minuten ohne Bildschirm einplanen.</p></div>
+        </aside>
+      </section>
+
+      {finished && (
+        <section className="completion-banner" role="alert">
+          <BellRing size={28}/><div><strong>{phase === "focus" ? "Fokuseinheit geschafft – jetzt bewusst unterbrechen." : "Pause beendet – starte ruhig in die nächste Aufgabe."}</strong><p>{phase === "focus" ? idea.text : "Formuliere vor dem Start in einem Satz, was am Ende fertig sein soll."}</p></div>
+          <button className="primary-button" onClick={() => switchPhase(phase === "focus" ? "break" : "focus")}>{phase === "focus" ? "Pause starten" : "Fokus starten"}</button>
+        </section>
+      )}
+    </div>
+  );
+}
