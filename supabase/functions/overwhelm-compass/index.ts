@@ -21,7 +21,9 @@ const supportOptions = [
 
 function corsHeaders(request: Request) {
   const origin = request.headers.get("origin") ?? "";
-  const permittedOrigin = origin === allowedOrigin || origin.startsWith("http://localhost:") ? origin : allowedOrigin;
+  const isLocalWeb = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
+  const isNativeApp = origin === "https://localhost" || origin === "capacitor://localhost";
+  const permittedOrigin = origin === allowedOrigin || isLocalWeb || isNativeApp ? origin : allowedOrigin;
   return {
     "Access-Control-Allow-Origin": permittedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

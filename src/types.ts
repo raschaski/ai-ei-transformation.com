@@ -70,3 +70,25 @@ export interface FocusSession {
   completed: boolean;
   created_at: string;
 }
+
+export interface ContactRequest {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  privacy_acknowledged: boolean;
+  privacy_text_version: string;
+  privacy_acknowledged_at: string | null;
+  health_data_consent: boolean;
+  health_consent_text_version: string;
+  health_data_consented_at: string | null;
+  contact_consent: boolean;
+  contact_consent_text_version: string;
+  contact_consented_at: string | null;
+  contact_withdrawn_at: string | null;
+  consent_text_version: string;
+  consented_at: string;
+  updated_at: string;
+  created_at: string;
+}

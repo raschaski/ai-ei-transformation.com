@@ -11,11 +11,12 @@
 | Optionale KI-Reflexion | externes Sprachmodell über Supabase Edge Function | Ja | höchstens 14 selbst eingegebene Zahlenwerte und Kategorien | Nein, nur unverbindliche Reflexion |
 | Optionale KI-Kompass-Vertiefung | externes Sprachmodell über Supabase Edge Function | Ja | sieben ausdrücklich freigegebene Testantworten einschließlich zweier Freitexte | Nein, nur unverbindliche Reflexion |
 | Überforderungs-Selbstcheck | feste Punktelogik | Nein | bewusste Selbstauskunft | Nein |
-| KI-Tool-Navigator | lokale Stichwortregeln | Nein | lokal eingegebene Aufgabenbeschreibung | Nein |
+| Lokale Tool-Navigator-Einordnung | lokale Stichwortregeln | Nein | lokal eingegebene Aufgabenbeschreibung | Nein |
+| Optionale KI-Tool-Beratung | OpenAI Responses API über Supabase Edge Function | Ja | ausdrücklich freigegebene, anonymisierte Aufgabenbeschreibung | Nein, nur unverbindliche Anleitung |
 | Diagramme und lokale Trends | feste Berechnungen | Nein | eigene Check-ins und Nutzungszeiten | Nein |
 | Pomodoro-Timer | Zeitsteuerung | Nein | Zeit und Pausenaktivität | Nein |
 
-Aktuell verwendetes Sprachmodell laut Edge Function: `gpt-5.6-luna`. Vor jeder Bereitstellung sind Modellname, Anbieter, Version, Region, Vertrag und Änderungen erneut zu dokumentieren.
+Aktuell verwendete Sprachmodelle laut Edge Functions: `gpt-5.6-luna` für Reflexionen und standardmäßig `gpt-5.6-sol` für die genaue Tool-Beratung. Vor jeder Bereitstellung sind Modellname, Anbieter, Version, Region, Vertrag und Änderungen erneut zu dokumentieren.
 
 ## 2. Rollen und vorläufige Risikoeinstufung
 
@@ -51,7 +52,8 @@ Eine Änderung in eine dieser Richtungen ist kein gewöhnliches Produktupdate. S
 - [x] Prompt verbietet Diagnose, Emotionserkennung, Leistungs- und Eignungsableitung
 - [x] Ausgabe als fehleranfällig und menschlich zu prüfen gekennzeichnet
 - [x] keine automatische Entscheidung und keine Arbeitgeberansicht
-- [x] Selbstcheck und Tool-Navigator ausdrücklich als nicht-generative, regelbasierte Funktionen erklärt
+- [x] Selbstcheck und lokale Tool-Einordnung ausdrücklich als nicht-generative Funktionen erklärt
+- [x] optionale KI-Tool-Beratung separat gekennzeichnet und bewusst aktiviert
 - [x] Export- und Löschfunktion für persönliche Daten
 - [x] Row-Level Security und explizite Datenbankrechte für persönliche Datensätze
 - [x] Meldeweg für unerwartete oder problematische KI-Ausgaben

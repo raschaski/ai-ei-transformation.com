@@ -125,3 +125,121 @@ drop policy if exists "Eigene Fokus-Sitzungen löschen" on public.focus_sessions
 create policy "Eigene Fokus-Sitzungen löschen" on public.focus_sessions for delete to authenticated using ((select auth.uid()) = user_id);
 revoke all on table public.focus_sessions from anon;
 grant select, insert, delete on table public.focus_sessions to authenticated;
+
+create table if not exists public.contact_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  full_name text not null check (char_length(trim(full_name)) between 2 and 120),
+  email text not null check (char_length(email) between 3 and 254 and position('@' in email) > 1),
+  phone text check (phone is null or char_length(phone) between 5 and 40),
+  privacy_acknowledged boolean check (privacy_acknowledged = true),
+  privacy_text_version text not null default '2026-07-23-v1',
+  privacy_acknowledged_at timestamptz,
+  health_data_consent boolean check (health_data_consent = true),
+  health_consent_text_version text not null default '2026-07-23-v1',
+  health_data_consented_at timestamptz,
+  contact_consent boolean not null default false,
+  contact_consent_text_version text not null default '2026-07-23-v1',
+  contact_consented_at timestamptz,
+  contact_withdrawn_at timestamptz,
+  consent_text_version text not null default '2026-07-23-v1',
+  consented_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  unique (user_id)
+);
+
+-- Bestehende Installationen der ersten Kontaktformular-Version aktualisieren.
+alter table public.contact_requests
+  drop constraint if exists contact_requests_contact_consent_check;
+alter table public.contact_requests
+  alter column contact_consent set default false;
+alter table public.contact_requests
+  add column if not exists privacy_acknowledged boolean check (privacy_acknowledged = true),
+  add column if not exists privacy_text_version text not null default '2026-07-23-v1',
+  add column if not exists privacy_acknowledged_at timestamptz,
+  add column if not exists health_data_consent boolean check (health_data_consent = true),
+  add column if not exists health_consent_text_version text not null default '2026-07-23-v1',
+  add column if not exists health_data_consented_at timestamptz,
+  add column if not exists contact_consent_text_version text not null default '2026-07-23-v1',
+  add column if not exists contact_consented_at timestamptz,
+  add column if not exists contact_withdrawn_at timestamptz;
+
+create or replace function public.set_contact_request_timestamps()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = now();
+
+  if tg_op = 'INSERT' then
+    if new.privacy_acknowledged = true then
+      new.privacy_acknowledged_at = now();
+    end if;
+    if new.health_data_consent = true then
+      new.health_data_consented_at = now();
+    end if;
+    if new.contact_consent = true then
+      new.contact_consented_at = now();
+    end if;
+  else
+    if new.privacy_acknowledged = true and old.privacy_acknowledged is distinct from true then
+      new.privacy_acknowledged_at = now();
+    end if;
+    if new.health_data_consent = true and old.health_data_consent is distinct from true then
+      new.health_data_consented_at = now();
+    end if;
+    if new.contact_consent = true and old.contact_consent is distinct from true then
+      new.contact_consented_at = now();
+      new.contact_withdrawn_at = null;
+    elsif new.contact_consent = false and old.contact_consent = true then
+      new.contact_withdrawn_at = now();
+    end if;
+  end if;
+
+  new.consented_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists contact_requests_set_timestamps on public.contact_requests;
+create trigger contact_requests_set_timestamps
+  before insert or update on public.contact_requests
+  for each row execute function public.set_contact_request_timestamps();
+
+revoke all on function public.set_contact_request_timestamps() from public;
+
+alter table public.contact_requests enable row level security;
+drop policy if exists "Eigene Kontaktanfrage lesen" on public.contact_requests;
+create policy "Eigene Kontaktanfrage lesen"
+  on public.contact_requests for select
+  to authenticated
+  using ((select auth.uid()) = user_id);
+drop policy if exists "Eigene Kontaktanfrage anlegen" on public.contact_requests;
+create policy "Eigene Kontaktanfrage anlegen"
+  on public.contact_requests for insert
+  to authenticated
+  with check (
+    (select auth.uid()) = user_id
+    and privacy_acknowledged = true
+    and health_data_consent = true
+  );
+drop policy if exists "Eigene Kontaktanfrage aktualisieren" on public.contact_requests;
+create policy "Eigene Kontaktanfrage aktualisieren"
+  on public.contact_requests for update
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check (
+    (select auth.uid()) = user_id
+    and privacy_acknowledged = true
+    and health_data_consent = true
+  );
+drop policy if exists "Eigene Kontaktanfrage löschen" on public.contact_requests;
+create policy "Eigene Kontaktanfrage löschen"
+  on public.contact_requests for delete
+  to authenticated
+  using ((select auth.uid()) = user_id);
+
+revoke all on table public.contact_requests from anon, authenticated;
+grant select, insert, update, delete on table public.contact_requests to authenticated;

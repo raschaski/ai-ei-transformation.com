@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 dist/
 .env
 .env.local
@@ -6,3 +7,9 @@ dist/
 coverage/
 supabase/.temp/
 supabase/functions/.env
+android/.gradle/
+android/local.properties
+android/**/build/
+android/upload-keystore.jks
+*.jks
+*.keystore

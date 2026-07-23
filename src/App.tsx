@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   Activity,
@@ -38,14 +38,20 @@ import {
   YAxis,
 } from "recharts";
 import { AiActView, CompanyView, ImprintView, PrivacyView } from "./components/CompanyAndLegal";
+import { ContactModal } from "./components/ContactModal";
 import { FocusTimer } from "./components/FocusTimer";
 import { SelfCheck } from "./components/SelfCheck";
 import { ToolNavigator } from "./components/ToolNavigator";
 import { createLocalInsight } from "./lib/analytics";
-import { getAuthRedirectUrl, isSupabaseConfigured, supabase } from "./lib/supabase";
-import type { AiEffect, AiPurpose, AiReflection, CheckIn, CheckInInput, FocusSession, SelfCheckResult, ToolSession } from "./types";
+import { getAuthRedirectUrl, isNativeApp, isSupabaseConfigured, openExternalAuth, supabase } from "./lib/supabase";
+import type { AiEffect, AiPurpose, AiReflection, CheckIn, CheckInInput, ContactRequest, FocusSession, SelfCheckResult, ToolSession } from "./types";
 
 type View = "overview" | "checkin" | "focus" | "selfcheck" | "navigator" | "trends" | "data" | "company" | "ai-act" | "imprint" | "privacy";
+
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -112,8 +118,28 @@ function App() {
   const [toolSessions, setToolSessions] = useState<ToolSession[]>(demoMode ? demoToolSessions : []);
   const [selfChecks, setSelfChecks] = useState<SelfCheckResult[]>([]);
   const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
+  const [contactRequests, setContactRequests] = useState<ContactRequest[]>(() => {
+    if (!demoMode) return [];
+    const savedContact = localStorage.getItem("mindful-ai-demo-contact");
+    return savedContact ? [JSON.parse(savedContact) as ContactRequest] : [];
+  });
+  const [loadedProfileUserId, setLoadedProfileUserId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const closeContact = useCallback(() => setContactOpen(false), []);
+  const signOut = useCallback(async () => {
+    if (demoMode) {
+      setDemoMode(false);
+      setView("overview");
+      return;
+    }
+    await supabase?.auth.signOut();
+  }, [demoMode]);
+  const handleContactSaved = useCallback((contact: ContactRequest) => {
+    if (demoMode) localStorage.setItem("mindful-ai-demo-contact", JSON.stringify(contact));
+    setContactRequests([contact]);
+  }, [demoMode]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -137,10 +163,13 @@ function App() {
       const savedTools = localStorage.getItem("mindful-ai-demo-tools");
       const savedSelfChecks = localStorage.getItem("mindful-ai-demo-selfchecks");
       const savedFocus = localStorage.getItem("mindful-ai-demo-focus");
+      const savedContact = localStorage.getItem("mindful-ai-demo-contact");
       setCheckIns(saved ? JSON.parse(saved) : demoCheckIns);
       setToolSessions(savedTools ? JSON.parse(savedTools) : demoToolSessions);
       setSelfChecks(savedSelfChecks ? JSON.parse(savedSelfChecks) : []);
       setFocusSessions(savedFocus ? JSON.parse(savedFocus) : []);
+      setContactRequests(savedContact ? [JSON.parse(savedContact)] : []);
+      setLoadedProfileUserId(null);
       return;
     }
 
@@ -149,24 +178,31 @@ function App() {
       setToolSessions([]);
       setSelfChecks([]);
       setFocusSessions([]);
+      setContactRequests([]);
+      setLoadedProfileUserId(null);
       return;
     }
 
     setLoadingData(true);
+    setLoadedProfileUserId(null);
     Promise.all([
       supabase.from("check_ins").select("*").order("entry_date", { ascending: false }),
       supabase.from("tool_sessions").select("*").order("created_at", { ascending: false }),
       supabase.from("self_checks").select("*").order("created_at", { ascending: false }),
       supabase.from("focus_sessions").select("*").order("created_at", { ascending: false }),
-    ]).then(([checkInResult, toolResult, selfCheckResult, focusResult]) => {
+      supabase.from("contact_requests").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }),
+    ]).then(([checkInResult, toolResult, selfCheckResult, focusResult, contactResult]) => {
       if (checkInResult.error) console.error(checkInResult.error);
       if (toolResult.error) console.error(toolResult.error);
       if (selfCheckResult.error) console.error(selfCheckResult.error);
       if (focusResult.error) console.error(focusResult.error);
+      if (contactResult.error) console.error(contactResult.error);
       setCheckIns((checkInResult.data as CheckIn[] | null) ?? []);
       setToolSessions((toolResult.data as ToolSession[] | null) ?? []);
       setSelfChecks((selfCheckResult.data as SelfCheckResult[] | null) ?? []);
       setFocusSessions((focusResult.data as FocusSession[] | null) ?? []);
+      setContactRequests((contactResult.data as ContactRequest[] | null) ?? []);
+      setLoadedProfileUserId(session.user.id);
       setLoadingData(false);
     });
   }, [demoMode, session]);
@@ -179,13 +215,28 @@ function App() {
     return <Welcome onStartDemo={() => setDemoMode(true)} />;
   }
 
-  async function signOut() {
-    if (demoMode) {
-      setDemoMode(false);
-      setView("overview");
-      return;
-    }
-    await supabase?.auth.signOut();
+  if (session && loadedProfileUserId !== session.user.id) {
+    return <FullPageLoader />;
+  }
+
+  const participantProfile = contactRequests[0];
+  const onboardingComplete = Boolean(
+    participantProfile?.privacy_acknowledged && participantProfile?.health_data_consent,
+  );
+
+  if (!onboardingComplete) {
+    return (
+      <div className="onboarding-shell">
+        <ContactModal
+          open
+          demoMode={demoMode}
+          session={session}
+          requiredForAccess
+          onClose={signOut}
+          onSaved={handleContactSaved}
+        />
+      </div>
+    );
   }
 
   function navigate(nextView: View) {
@@ -222,7 +273,11 @@ function App() {
           ))}
         </nav>
         <div className="topbar-actions">
+          <InstallAppButton />
           {demoMode && <span className="demo-badge">Demo</span>}
+          <button className="contact-button desktop-only" onClick={() => setContactOpen(true)}>
+            <MessageCircleHeart size={17} /> Kontakt
+          </button>
           <button className="icon-button desktop-only" onClick={signOut} aria-label="Abmelden">
             <LogOut size={19} />
           </button>
@@ -239,6 +294,7 @@ function App() {
               <item.icon size={19} /> {item.label}
             </button>
           ))}
+          <button onClick={() => { setContactOpen(true); setMenuOpen(false); }}><MessageCircleHeart size={19} /> Kontakt & Zustimmung</button>
           <button onClick={signOut}><LogOut size={19} /> Abmelden</button>
         </nav>
       )}
@@ -261,21 +317,25 @@ function App() {
             }}
           />
         )}
-        {view === "focus" && <FocusTimer demoMode={demoMode} session={session} onSaved={(item) => setFocusSessions((current) => {
-          const next = [item, ...current];
-          if (demoMode) localStorage.setItem("mindful-ai-demo-focus", JSON.stringify(next));
-          return next;
-        })}/>}
+        <div hidden={view !== "focus"}>
+          <FocusTimer demoMode={demoMode} session={session} onSaved={(item) => setFocusSessions((current) => {
+            const next = [item, ...current];
+            if (demoMode) localStorage.setItem("mindful-ai-demo-focus", JSON.stringify(next));
+            return next;
+          })}/>
+        </div>
         {view === "selfcheck" && <SelfCheck demoMode={demoMode} session={session} onSaved={(item) => setSelfChecks((current) => {
           const next = [item, ...current];
           if (demoMode) localStorage.setItem("mindful-ai-demo-selfchecks", JSON.stringify(next));
           return next;
         })}/>}
-        {view === "navigator" && <ToolNavigator demoMode={demoMode} session={session} onSaved={(item) => setToolSessions((current) => {
-          const next = [item, ...current];
-          if (demoMode) localStorage.setItem("mindful-ai-demo-tools", JSON.stringify(next));
-          return next;
-        })}/>}
+        <div hidden={view !== "navigator"}>
+          <ToolNavigator demoMode={demoMode} session={session} onSaved={(item) => setToolSessions((current) => {
+            const next = [item, ...current];
+            if (demoMode) localStorage.setItem("mindful-ai-demo-tools", JSON.stringify(next));
+            return next;
+          })}/>
+        </div>
         {view === "trends" && <Trends checkIns={checkIns} toolSessions={toolSessions} selfChecks={selfChecks} focusSessions={focusSessions} demoMode={demoMode} />}
         {view === "data" && (
           <DataAndPrivacy
@@ -283,8 +343,9 @@ function App() {
             toolSessions={toolSessions}
             selfChecks={selfChecks}
             focusSessions={focusSessions}
+            contactRequests={contactRequests}
             demoMode={demoMode}
-            onCleared={() => { setCheckIns([]); setToolSessions([]); setSelfChecks([]); setFocusSessions([]); }}
+            onCleared={() => { setCheckIns([]); setToolSessions([]); setSelfChecks([]); setFocusSessions([]); setContactRequests([]); }}
           />
         )}
         {view === "company" && <CompanyView/>}
@@ -300,6 +361,14 @@ function App() {
         </div>
         <div className="footer-right"><div className="footer-links"><button onClick={() => navigate("data")}>Daten & Schutz</button><button onClick={() => navigate("ai-act")}><Scale size={14}/> EU AI Act</button><button onClick={() => navigate("imprint")}>Impressum</button><button onClick={() => navigate("privacy")}>Datenschutz</button></div><p>Bei akuter Gefahr: 112 · Telefonseelsorge: 0800 111 0 111</p></div>
       </footer>
+      <ContactModal
+        open={contactOpen}
+        demoMode={demoMode}
+        session={session}
+        initialContact={contactRequests[0]}
+        onClose={closeContact}
+        onSaved={handleContactSaved}
+      />
     </div>
   );
 }
@@ -314,9 +383,37 @@ function FullPageLoader() {
   );
 }
 
+function InstallAppButton() {
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    if (isNativeApp) return;
+    const handlePrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", handlePrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handlePrompt);
+  }, []);
+
+  if (!installPrompt) return null;
+
+  async function install() {
+    await installPrompt!.prompt();
+    await installPrompt!.userChoice;
+    setInstallPrompt(null);
+  }
+
+  return (
+    <button className="install-button" onClick={install} aria-label="Mindful AI auf diesem Gerät installieren">
+      <Download size={17} />
+      <span>App installieren</span>
+    </button>
+  );
+}
+
 function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
   const [email, setEmail] = useState("");
-  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -339,18 +436,18 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
 
   async function signInWithGoogle() {
     if (!supabase) return;
-    if (!consent) {
-      setStatus("error");
-      setMessage("Bitte bestätige zuerst die freiwillige Verarbeitung deiner Gesundheitsangaben.");
-      return;
-    }
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: getAuthRedirectUrl() },
+      options: {
+        redirectTo: getAuthRedirectUrl(),
+        skipBrowserRedirect: isNativeApp,
+      },
     });
     if (error) {
       setStatus("error");
       setMessage(error.message);
+    } else if (data.url && isNativeApp) {
+      await openExternalAuth(data.url);
     }
   }
 
@@ -358,7 +455,7 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
     <div className="welcome-page">
       <header className="welcome-header">
         <div className="brand"><img className="brand-logo" src={`${import.meta.env.BASE_URL}undercover-trainer-logo.png`} alt="The Undercover Trainer"/><span className="brand-product">Mindful AI</span></div>
-        <span className="privacy-chip"><LockKeyhole size={15} /> Datenschutz zuerst</span>
+        <div className="welcome-actions"><InstallAppButton /><span className="privacy-chip"><LockKeyhole size={15} /> Datenschutz zuerst</span></div>
       </header>
       <main className="welcome-main">
         <section className="welcome-copy">
@@ -372,6 +469,7 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
             <span><Check size={17} /> Keine Diagnosen</span>
             <span><Check size={17} /> Jederzeit löschbar</span>
           </div>
+          <p className="caveat health-disclaimer">Mindful AI ist kein Medizinprodukt und diagnostiziert, behandelt, heilt oder verhindert keine Erkrankung. Bei medizinischen Fragen wende dich an eine qualifizierte Fachperson.</p>
         </section>
         <section className="auth-card" aria-labelledby="login-title">
           <div className="auth-icon"><MessageCircleHeart size={28} /></div>
@@ -387,7 +485,6 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
               placeholder="du@beispiel.de"
               required
             />
-            <label className="consent-check"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} required/><span>Ich willige ausdrücklich und freiwillig ein, dass meine Angaben zum emotionalen Befinden als Gesundheitsdaten für die persönlichen App-Funktionen verarbeitet werden. Ich kann die Einwilligung jederzeit für die Zukunft widerrufen und meine Daten löschen.</span></label>
             <button className="primary-button full" disabled={status === "sending"}>
               {status === "sending" ? <LoaderCircle className="spin" size={18} /> : <ChevronRight size={18} />}
               Anmeldelink senden
@@ -395,9 +492,9 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
           </form>
           {message && <div className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
           <div className="divider"><span>oder</span></div>
-          <button className="secondary-button full" onClick={signInWithGoogle} disabled={!consent}>Mit Google anmelden</button>
+          <button className="secondary-button full" onClick={signInWithGoogle}>Mit Google anmelden</button>
           <button className="text-button" onClick={onStartDemo}>App zuerst im Demo-Modus ansehen</button>
-          <details className="auth-privacy"><summary>Kurzer Datenschutzhinweis</summary><p>GitHub Pages liefert die Oberfläche aus, Supabase verarbeitet Anmeldung und deine privaten App-Daten. Die optionale KI-Reflexion startet nur auf deinen Klick und überträgt keine freien Notizen. Dieses Angebot ersetzt keine medizinische Beratung.</p></details>
+          <details className="auth-privacy"><summary>Kurzer Datenschutzhinweis</summary><p>GitHub Pages liefert die Oberfläche aus, Supabase verarbeitet Anmeldung und deine privaten App-Daten. KI-Funktionen starten nur auf deinen Klick. Bei der Reflexion werden keine freien Tagebuchnotizen übertragen; beim KI-Navigator wird ausschließlich die von dir freigegebene, anonymisierte Aufgabenbeschreibung verarbeitet. Dieses Angebot ersetzt keine medizinische Beratung. <a href={`${import.meta.env.BASE_URL}datenschutz.html`} target="_blank" rel="noreferrer">Vollständige Datenschutzerklärung</a></p></details>
         </section>
       </main>
     </div>
@@ -724,11 +821,13 @@ function Trends({ checkIns, toolSessions, selfChecks, focusSessions, demoMode }:
   );
 }
 
-function DataAndPrivacy({ checkIns, toolSessions, selfChecks, focusSessions, demoMode, onCleared }: { checkIns: CheckIn[]; toolSessions: ToolSession[]; selfChecks: SelfCheckResult[]; focusSessions: FocusSession[]; demoMode: boolean; onCleared: () => void }) {
+function DataAndPrivacy({ checkIns, toolSessions, selfChecks, focusSessions, contactRequests, demoMode, onCleared }: { checkIns: CheckIn[]; toolSessions: ToolSession[]; selfChecks: SelfCheckResult[]; focusSessions: FocusSession[]; contactRequests: ContactRequest[]; demoMode: boolean; onCleared: () => void }) {
   const [status, setStatus] = useState("");
+  const [accountStatus, setAccountStatus] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   function exportData() {
-    const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), check_ins: checkIns, tool_sessions: toolSessions, self_checks: selfChecks, focus_sessions: focusSessions }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), check_ins: checkIns, tool_sessions: toolSessions, self_checks: selfChecks, focus_sessions: focusSessions, contact_requests: contactRequests }, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `mindful-ai-export-${today}.json`;
@@ -737,19 +836,44 @@ function DataAndPrivacy({ checkIns, toolSessions, selfChecks, focusSessions, dem
   }
 
   async function clearData() {
-    if (!window.confirm("Möchtest du wirklich alle Check-ins, Selbstchecks, Tool- und Fokussitzungen unwiderruflich löschen?")) return;
+    if (!window.confirm("Möchtest du wirklich alle Check-ins, Selbstchecks, Tool- und Fokussitzungen sowie deine Kontaktdaten und Kontakteinwilligung unwiderruflich löschen?")) return;
     if (demoMode) {
       localStorage.removeItem("mindful-ai-demo-checkins");
       localStorage.removeItem("mindful-ai-demo-tools");
       localStorage.removeItem("mindful-ai-demo-selfchecks");
       localStorage.removeItem("mindful-ai-demo-focus");
+      localStorage.removeItem("mindful-ai-demo-contact");
       onCleared();
       setStatus("Die Demo-Daten wurden gelöscht.");
       return;
     }
-    const results = await Promise.all(["check_ins", "tool_sessions", "self_checks", "focus_sessions"].map((table) => supabase!.from(table).delete().not("id", "is", null)));
+    const results = await Promise.all(["check_ins", "tool_sessions", "self_checks", "focus_sessions", "contact_requests"].map((table) => supabase!.from(table).delete().not("id", "is", null)));
     if (results.some((result) => result.error)) setStatus("Mindestens ein Datensatz konnte nicht gelöscht werden. Bitte prüfe die Supabase-Einrichtung.");
     else { onCleared(); setStatus("Deine persönlichen App-Daten wurden gelöscht."); }
+  }
+
+  async function deleteAccount() {
+    const firstConfirmation = window.confirm("Möchtest du dein Mindful-AI-Konto einschließlich aller verbundenen Daten dauerhaft löschen?");
+    if (!firstConfirmation) return;
+    const finalConfirmation = window.confirm("Dieser Schritt kann nicht rückgängig gemacht werden. Konto jetzt wirklich löschen?");
+    if (!finalConfirmation || !supabase) return;
+
+    setDeletingAccount(true);
+    setAccountStatus("");
+    const { error } = await supabase.functions.invoke("delete-account", { body: { confirmation: "DELETE" } });
+    if (error) {
+      setAccountStatus("Das Konto konnte noch nicht gelöscht werden. Prüfe, ob die Funktion „delete-account“ in Supabase bereitgestellt wurde.");
+      setDeletingAccount(false);
+      return;
+    }
+
+    onCleared();
+    localStorage.removeItem("mindful-ai-demo-checkins");
+    localStorage.removeItem("mindful-ai-demo-tools");
+    localStorage.removeItem("mindful-ai-demo-selfchecks");
+    localStorage.removeItem("mindful-ai-demo-focus");
+    localStorage.removeItem("mindful-ai-demo-contact");
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
   }
 
   return (
@@ -761,10 +885,16 @@ function DataAndPrivacy({ checkIns, toolSessions, selfChecks, focusSessions, dem
         <article className="card privacy-card"><span><CircleHelp /></span><h2>Keine Diagnose</h2><p>Alle Hinweise sind Reflexionshilfen. Die App bewertet keine psychischen Erkrankungen.</p></article>
       </section>
       <section className="card data-actions">
-        <div><h2>Deine App-Daten</h2><p>{checkIns.length + toolSessions.length + selfChecks.length + focusSessions.length} Einträge sind aktuell gespeichert.</p></div>
-        <div><button className="secondary-button" onClick={exportData} disabled={!checkIns.length && !toolSessions.length && !selfChecks.length && !focusSessions.length}><Download size={18} /> Daten exportieren</button><button className="danger-button" onClick={clearData} disabled={!checkIns.length && !toolSessions.length && !selfChecks.length && !focusSessions.length}><Trash2 size={18} /> Alle Daten löschen</button></div>
+        <div><h2>Deine App-Daten</h2><p>{checkIns.length + toolSessions.length + selfChecks.length + focusSessions.length + contactRequests.length} Einträge sind aktuell gespeichert. Dazu zählen auch hinterlegte Kontaktdaten und die protokollierte Einwilligung.</p></div>
+        <div><button className="secondary-button" onClick={exportData} disabled={!checkIns.length && !toolSessions.length && !selfChecks.length && !focusSessions.length && !contactRequests.length}><Download size={18} /> Daten exportieren</button><button className="danger-button" onClick={clearData} disabled={!checkIns.length && !toolSessions.length && !selfChecks.length && !focusSessions.length && !contactRequests.length}><Trash2 size={18} /> Alle Daten löschen</button></div>
         {status && <div className="form-message">{status}</div>}
       </section>
+      {!demoMode && <section className="card account-deletion">
+        <div><span className="eyebrow">Kontoverwaltung</span><h2>Konto vollständig löschen</h2><p>Dabei werden dein Benutzerkonto sowie alle zugeordneten Check-ins, Selbstchecks, Fokus- und Tool-Sitzungen, Kontaktdaten und Einwilligungsnachweise gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.</p></div>
+        <button className="danger-button" onClick={deleteAccount} disabled={deletingAccount}><Trash2 size={18}/>{deletingAccount ? "Konto wird gelöscht …" : "Konto und Daten löschen"}</button>
+        {accountStatus && <div className="form-message error">{accountStatus}</div>}
+      </section>}
+      <p className="external-deletion-link">Du hast keinen Zugriff mehr auf die App? <a href={`${import.meta.env.BASE_URL}account-loeschen.html`} target="_blank" rel="noreferrer">Löschung außerhalb der App anfragen</a>.</p>
       <section className="help-card"><MessageCircleHeart size={25} /><div><h2>Wenn du Unterstützung brauchst</h2><p>Sprich mit einer vertrauten Person oder professionellen Beratungsstelle. Bei unmittelbarer Gefahr wähle 112. Die Telefonseelsorge erreichst du unter 0800 111 0 111.</p></div></section>
     </div>
   );

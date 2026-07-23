@@ -1,0 +1,8 @@
+{
+  "appId": "com.theundercovertrainer.mindfulai",
+  "appName": "Mindful AI",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
