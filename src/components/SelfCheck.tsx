@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowLeft, ArrowRight, Brain, CheckCircle2, ChevronDown, Compass, HeartPulse, Leaf, LoaderCircle, RotateCcw, ShieldCheck, Sparkles, Wind } from "lucide-react";
+import { isCompassResult, type CompassResult, type InnerPart } from "../lib/compassResult";
 import { supabase } from "../lib/supabase";
 import type { SelfCheckAnswers, SelfCheckResult } from "../types";
 
@@ -54,17 +55,6 @@ const questions: Question[] = [
     ],
   },
 ];
-
-type InnerPart = { name: string; score: number; need: string; risk: string; microAction: string };
-type CompassResult = { title: string; summary: string; parts: InnerPart[]; solution: string; plan: string[]; authenticity: string; safetyNote: string };
-
-function isCompassResult(value: unknown): value is CompassResult {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<CompassResult>;
-  return typeof item.title === "string" && typeof item.summary === "string" && typeof item.solution === "string"
-    && typeof item.authenticity === "string" && typeof item.safetyNote === "string"
-    && Array.isArray(item.parts) && item.parts.length === 3 && Array.isArray(item.plan) && item.plan.length === 7;
-}
 
 function buildLocalResult(answers: SelfCheckAnswers): CompassResult {
   const control = Number(answers.control || 3);
@@ -160,7 +150,7 @@ export function SelfCheck({ demoMode, session, onSaved }: { demoMode: boolean; s
         setResultSource("ai");
       } else {
         setResultSource("local");
-        setResultNotice("Die optionale KI-Vertiefung war nicht erreichbar. Deshalb siehst du die sichere lokale Auswertung.");
+        setResultNotice("Die optionale KI-Vertiefung war nicht erreichbar oder nicht verlässlich formatiert. Deshalb siehst du die geprüfte lokale Auswertung.");
       }
     } else {
       await new Promise((resolve) => setTimeout(resolve, 650));

@@ -2,6 +2,19 @@ import { createClient } from "npm:@supabase/supabase-js@2.110.7";
 
 const webOrigin = Deno.env.get("APP_ORIGIN") ?? "https://raschaski.github.io";
 
+function projectKey(dictionaryName: string, legacyName: string) {
+  const dictionary = Deno.env.get(dictionaryName);
+  if (dictionary) {
+    try {
+      const keys = JSON.parse(dictionary) as Record<string, unknown>;
+      if (typeof keys.default === "string") return keys.default;
+    } catch {
+      // Bei älteren Projekten stehen weiterhin die Legacy-Variablen bereit.
+    }
+  }
+  return Deno.env.get(legacyName);
+}
+
 function corsHeaders(request: Request) {
   const origin = request.headers.get("origin") ?? "";
   const isLocalWeb = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
@@ -39,20 +52,20 @@ Deno.serve(async (request) => {
   if (payload.confirmation !== "DELETE") return jsonResponse(request, { error: "Bestätigung fehlt" }, 400);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+  const supabasePublishableKey = projectKey("SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_ANON_KEY");
+  const supabaseSecretKey = projectKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !supabasePublishableKey || !supabaseSecretKey) {
     return jsonResponse(request, { error: "Server-Konfiguration unvollständig" }, 503);
   }
 
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+  const userClient = createClient(supabaseUrl, supabasePublishableKey, {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: { user }, error: userError } = await userClient.auth.getUser();
   if (userError || !user) return jsonResponse(request, { error: "Ungültige Sitzung" }, 401);
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+  const adminClient = createClient(supabaseUrl, supabaseSecretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);

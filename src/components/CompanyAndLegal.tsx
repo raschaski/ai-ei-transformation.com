@@ -33,13 +33,11 @@ export function ImprintView() {
     <h2>Kontakt</h2><p>Telefon: <a href="tel:+4917636721988">+49 176 36721988</a><br/>E-Mail: <a href="mailto:trainer@the-undercover-trainer.com">trainer@the-undercover-trainer.com</a><br/>Website: <a href="https://the-undercover-trainer.com" target="_blank" rel="noreferrer">the-undercover-trainer.com</a></p>
     <h2>Verbraucherstreitbeilegung</h2><p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
     <h2>Haftung für Inhalte und Links</h2><p>Wir erstellen die Inhalte dieser App mit Sorgfalt. Allgemeine Reflexions- und Selbsthilfehinweise ersetzen keine medizinische, psychologische oder rechtliche Beratung. Für Inhalte externer Links sind ausschließlich deren Betreiber verantwortlich.</p>
-    <div className="legal-notice">Dieser Text wurde an die App angepasst, ist aber keine Rechtsberatung. Vor einer öffentlichen geschäftlichen Nutzung sollte das Impressum anwaltlich geprüft werden.</div>
   </LegalLayout>;
 }
 
 export function PrivacyView() {
-  return <LegalLayout title="Datenschutzerklärung" updated="Stand: 23. Juli 2026 · Entwurf zur juristischen Prüfung">
-    <div className="legal-notice"><strong>Wichtig:</strong> Diese Fassung beschreibt die aktuell geplante Technik. Vor dem öffentlichen Betrieb müssen die tatsächlich aktivierten Anbieter, Verträge, Löschfristen und Unternehmensprozesse geprüft und ergänzt werden.</div>
+  return <LegalLayout title="Datenschutzerklärung" updated="Stand: 23. Juli 2026">
     <h2>1. Verantwortliche Stelle</h2><p>Rascha Al-Nemer, The-Undercover-Trainer, Rathausstraße 132, 68519 Viernheim. E-Mail: <a href="mailto:trainer@the-undercover-trainer.com">trainer@the-undercover-trainer.com</a>.</p>
     <h2>2. Zweck der App</h2><p>Die App unterstützt Nutzerinnen und Nutzer dabei, KI-Nutzungszeiten, subjektives Wohlbefinden, Selbstchecks und persönliche Reflexionen festzuhalten. Sie ist kein Medizinprodukt und führt keine Diagnosen durch.</p>
     <h2>3. Welche Daten verarbeitet werden</h2><ul><li>Kontodaten wie E-Mail-Adresse und Authentifizierungsdaten,</li><li>zu Beginn: Name, E-Mail-Adresse, optional Telefonnummer sowie Zeitpunkt und Textversion der Datenschutzbestätigung und Einwilligungen,</li><li>freiwillige Check-ins zu Stimmung, Stress, Schlaf, Verbundenheit und KI-Nutzung,</li><li>Selbstcheck-Ergebnisse, Fokus- und Tool-Nutzungszeiten sowie freiwillige Notizen,</li><li>technische Verbindungs- und Protokolldaten, die Hosting- und Sicherheitsanbieter verarbeiten können.</li></ul>

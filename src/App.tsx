@@ -11,6 +11,7 @@ import {
   CircleHelp,
   Download,
   Heart,
+  GraduationCap,
   Leaf,
   LoaderCircle,
   LockKeyhole,
@@ -43,6 +44,7 @@ import { FocusTimer } from "./components/FocusTimer";
 import { SelfCheck } from "./components/SelfCheck";
 import { ToolNavigator } from "./components/ToolNavigator";
 import { createLocalInsight } from "./lib/analytics";
+import { isHealthReflection, MIN_HEALTH_REFLECTION_CHECK_INS } from "./lib/healthReflection";
 import { getAuthRedirectUrl, isNativeApp, isSupabaseConfigured, openExternalAuth, supabase } from "./lib/supabase";
 import type { AiEffect, AiPurpose, AiReflection, CheckIn, CheckInInput, ContactRequest, FocusSession, SelfCheckResult, ToolSession } from "./types";
 
@@ -336,7 +338,7 @@ function App() {
             return next;
           })}/>
         </div>
-        {view === "trends" && <Trends checkIns={checkIns} toolSessions={toolSessions} selfChecks={selfChecks} focusSessions={focusSessions} demoMode={demoMode} />}
+        {view === "trends" && <Trends checkIns={checkIns} toolSessions={toolSessions} selfChecks={selfChecks} focusSessions={focusSessions} demoMode={demoMode} onNavigate={navigate} />}
         {view === "data" && (
           <DataAndPrivacy
             checkIns={checkIns}
@@ -452,51 +454,177 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
   }
 
   return (
-    <div className="welcome-page">
-      <header className="welcome-header">
-        <div className="brand"><img className="brand-logo" src={`${import.meta.env.BASE_URL}undercover-trainer-logo.png`} alt="The Undercover Trainer"/><span className="brand-product">Mindful AI</span></div>
-        <div className="welcome-actions"><InstallAppButton /><span className="privacy-chip"><LockKeyhole size={15} /> Datenschutz zuerst</span></div>
+    <div className="welcome-page marketing-page">
+      <header className="welcome-header marketing-header">
+        <a className="brand" href="#start" aria-label="The Undercover Trainer – Startseite">
+          <img className="brand-logo" src={`${import.meta.env.BASE_URL}undercover-trainer-logo.png`} alt="The Undercover Trainer"/>
+          <span className="brand-product">KI Health</span>
+        </a>
+        <nav className="marketing-nav" aria-label="Hauptnavigation">
+          <a href="#wirkung">Wirkung von KI</a>
+          <a href="#loesung">Für Unternehmen</a>
+          <a href="#app">KI Health App</a>
+          <a href="#ueber-mich">Über mich</a>
+        </nav>
+        <div className="welcome-actions">
+          <InstallAppButton />
+          <a className="header-cta" href="https://calendly.com/undercover_trainer/erstgesprach" target="_blank" rel="noreferrer">Erstgespräch</a>
+        </div>
       </header>
-      <main className="welcome-main">
-        <section className="welcome-copy">
-          <span className="eyebrow"><Sparkles size={15} /> Deine KI-Nutzung, bewusst betrachtet</span>
-          <h1>Wie geht es dir<br />mit KI?</h1>
-          <p className="lead">
-            Erkenne behutsam, wie Chatbots und generative KI mit deiner Stimmung, deinem Stress und deinem Alltag zusammenhängen.
-          </p>
-          <div className="trust-list">
-            <span><Check size={17} /> Nur deine eigenen Daten</span>
-            <span><Check size={17} /> Keine Diagnosen</span>
-            <span><Check size={17} /> Jederzeit löschbar</span>
+
+      <main>
+        <section className="marketing-hero" id="start">
+          <div className="marketing-hero-copy">
+            <span className="eyebrow"><Sparkles size={15} /> Gesunde KI-Kompetenz für den Mittelstand</span>
+            <h1>KI soll entlasten.<br/><em>Nicht überfordern.</em></h1>
+            <p className="marketing-lead">Nutzen Sie KI-Tools so, dass sie messbar Zeit und Kosten sparen – ohne Ihre Mitarbeitenden in Tool-Chaos, Dauerbeschleunigung und mentaler Überlastung zu verlieren.</p>
+            <div className="marketing-hero-actions">
+              <a className="primary-button" href="https://calendly.com/undercover_trainer/erstgesprach" target="_blank" rel="noreferrer">Potenzialgespräch buchen <ChevronRight size={18}/></a>
+              <button className="secondary-button" onClick={onStartDemo}>KI Health App testen</button>
+            </div>
+            <div className="hero-proof">
+              <span><Check size={17}/> Praxisnah für KMU</span>
+              <span><Check size={17}/> Datenschutzorientiert</span>
+              <span><Check size={17}/> Menschlich statt technikgetrieben</span>
+            </div>
           </div>
-          <p className="caveat health-disclaimer">Mindful AI ist kein Medizinprodukt und diagnostiziert, behandelt, heilt oder verhindert keine Erkrankung. Bei medizinischen Fragen wende dich an eine qualifizierte Fachperson.</p>
+          <div className="marketing-hero-visual" aria-label="KI Health verbindet wirtschaftlichen Nutzen mit emotionaler Gesundheit">
+            <div className="visual-orb">
+              <BrainCircuit size={54}/>
+              <span>KI</span>
+            </div>
+            <article className="floating-card floating-card-top"><Timer size={20}/><div><strong>Zeit gewinnen</strong><small>Routinearbeit sinnvoll automatisieren</small></div></article>
+            <article className="floating-card floating-card-bottom"><Heart size={20}/><div><strong>Gesund arbeiten</strong><small>Belastung früh wahrnehmen</small></div></article>
+            <div className="visual-caption"><span>Der entscheidende Faktor</span><strong>Technologie × Mensch</strong></div>
+          </div>
         </section>
-        <section className="auth-card" aria-labelledby="login-title">
-          <div className="auth-icon"><MessageCircleHeart size={28} /></div>
-          <h2 id="login-title">Schön, dass du da bist</h2>
-          <p>Melde dich ohne Passwort an. Du erhältst einen sicheren Link per E-Mail.</p>
-          <form onSubmit={sendMagicLink}>
-            <label htmlFor="email">E-Mail-Adresse</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="du@beispiel.de"
-              required
-            />
-            <button className="primary-button full" disabled={status === "sending"}>
-              {status === "sending" ? <LoaderCircle className="spin" size={18} /> : <ChevronRight size={18} />}
-              Anmeldelink senden
-            </button>
-          </form>
-          {message && <div className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
-          <div className="divider"><span>oder</span></div>
-          <button className="secondary-button full" onClick={signInWithGoogle}>Mit Google anmelden</button>
-          <button className="text-button" onClick={onStartDemo}>App zuerst im Demo-Modus ansehen</button>
-          <details className="auth-privacy"><summary>Kurzer Datenschutzhinweis</summary><p>GitHub Pages liefert die Oberfläche aus, Supabase verarbeitet Anmeldung und deine privaten App-Daten. KI-Funktionen starten nur auf deinen Klick. Bei der Reflexion werden keine freien Tagebuchnotizen übertragen; beim KI-Navigator wird ausschließlich die von dir freigegebene, anonymisierte Aufgabenbeschreibung verarbeitet. Dieses Angebot ersetzt keine medizinische Beratung. <a href={`${import.meta.env.BASE_URL}datenschutz.html`} target="_blank" rel="noreferrer">Vollständige Datenschutzerklärung</a></p></details>
+
+        <section className="problem-strip" aria-label="Herausforderungen im KI-Alltag">
+          <p>Mehr Tools.</p><p>Mehr Tempo.</p><p>Mehr Möglichkeiten.</p><strong>Aber nicht automatisch mehr Klarheit.</strong>
+        </section>
+
+        <section className="marketing-section impact-section" id="wirkung">
+          <div className="section-intro">
+            <span className="eyebrow">Was viele KI-Projekte übersehen</span>
+            <h2>Die größte Herausforderung ist selten das Tool.</h2>
+            <p>Sie entsteht dort, wo neue technische Möglichkeiten auf Zeitdruck, Unsicherheit und fehlende Leitplanken treffen. Dann wird aus dem versprochenen Effizienzgewinn schnell zusätzliche Belastung.</p>
+          </div>
+          <div className="impact-grid">
+            <article><span>01</span><BrainCircuit/><h3>Kognitive Überlastung</h3><p>Zu viele Optionen, Prompts und Ergebnisse erhöhen die mentale Last, statt Entscheidungen zu vereinfachen.</p></article>
+            <article><span>02</span><Activity/><h3>Dauerbeschleunigung</h3><p>Gesparte Zeit wird sofort mit neuen Aufgaben gefüllt. Pausen und konzentrierte Arbeit verschwinden.</p></article>
+            <article><span>03</span><CircleHelp/><h3>Unsicherheit</h3><p>Fehlende Regeln zu Datenschutz, Qualität und Verantwortung bremsen Teams oder führen zu riskanten Alleingängen.</p></article>
+            <article><span>04</span><MessageCircleHeart/><h3>Emotionale Distanz</h3><p>Wenn KI menschliche Abstimmung ersetzt, können Verbundenheit, Selbstwirksamkeit und Vertrauen leiden.</p></article>
+          </div>
+        </section>
+
+        <section className="marketing-section solution-section" id="loesung">
+          <div className="solution-panel">
+            <div className="solution-copy">
+              <span className="eyebrow">The Undercover Trainer Ansatz</span>
+              <h2>Effizienz und emotionale Gesundheit gehören zusammen.</h2>
+              <p>Ich unterstütze mittelständische Unternehmen dabei, KI nicht einfach einzuführen, sondern gesund in den Arbeitsalltag zu integrieren: mit klaren Anwendungsfällen, verständlichen Leitplanken und Mitarbeitenden, die sich sicher statt ersetzt fühlen.</p>
+              <a href="https://calendly.com/undercover_trainer/erstgesprach" target="_blank" rel="noreferrer">Pilotprojekt besprechen <ChevronRight size={17}/></a>
+            </div>
+            <div className="solution-steps">
+              <article><span>1</span><div><h3>Entlastungspotenziale finden</h3><p>Wiederkehrende Aufgaben identifizieren, Zeitfresser sichtbar machen und sinnvolle KI-Einsatzfelder priorisieren.</p></div></article>
+              <article><span>2</span><div><h3>Gesunde Nutzung trainieren</h3><p>Prompts, Qualitätsprüfung, Datenschutz, Fokus und Pausen als gemeinsame Arbeitskompetenz etablieren.</p></div></article>
+              <article><span>3</span><div><h3>Wirkung reflektieren</h3><p>Zeitgewinn und subjektive Belastung gemeinsam betrachten – ohne Beschäftigte zu überwachen.</p></div></article>
+            </div>
+          </div>
+        </section>
+
+        <section className="marketing-section app-showcase" id="app">
+          <div className="app-demo-frame" aria-label="Vorschau der KI Health App">
+            <div className="app-demo-toolbar"><i/><i/><i/><span>KI Health App</span></div>
+            <div className="app-demo-content">
+              <div className="app-demo-sidebar"><span className="active"/><span/><span/><span/></div>
+              <div className="app-demo-dashboard">
+                <div className="demo-welcome"><small>Dein persönlicher Rückblick</small><strong>Wie fühlst du dich heute?</strong><p>KI-Nutzung reflektieren. Fokus schützen. Klar weiterarbeiten.</p></div>
+                <div className="demo-metrics"><span><b>42 Min.</b><small>KI-Nutzung</small></span><span><b>2</b><small>Stress</small></span><span><b>4</b><small>Fokus</small></span></div>
+                <div className="demo-chart"><i/><i/><i/><i/><i/><i/><i/></div>
+              </div>
+            </div>
+          </div>
+          <div className="app-showcase-copy">
+            <span className="eyebrow"><Heart size={15}/> Die KI Health App</span>
+            <h2>Ein persönlicher Kompass für den KI-Arbeitsalltag.</h2>
+            <p>Die App hilft Menschen, ihre KI-Nutzung, Stimmung, Stress und Konzentration bewusst zu reflektieren. Dazu kommen Fokus-Timer, Selbstchecks, ein KI-Tool-Navigator und verständliche Auswertungen.</p>
+            <ul>
+              <li><Check size={18}/> Private Check-ins statt Leistungsüberwachung</li>
+              <li><Check size={18}/> Fokuszeiten und tatsächliche Zeitersparnis erfassen</li>
+              <li><Check size={18}/> Passende KI-Tools für konkrete Aufgaben einordnen</li>
+              <li><Check size={18}/> Demo-Modus ohne Konto oder Backend testen</li>
+            </ul>
+            <div className="marketing-hero-actions">
+              <button className="primary-button" onClick={onStartDemo}>App-Demo öffnen <ChevronRight size={18}/></button>
+              <a className="secondary-button" href="#anmelden">Bereits registriert</a>
+            </div>
+            <p className="caveat">Die App ist ein Reflexionswerkzeug, kein Medizinprodukt und kein Instrument für Personalentscheidungen.</p>
+          </div>
+        </section>
+
+        <section className="marketing-section about-section" id="ueber-mich">
+          <div className="about-image-wrap">
+            <img src={`${import.meta.env.BASE_URL}undercover-trainer-ai-manager.jpg`} alt="The Undercover Trainer – KI und emotionale Gesundheit"/>
+          </div>
+          <div className="about-copy">
+            <span className="eyebrow">Rascha Al-Nemer · The Undercover Trainer</span>
+            <h2>Technologie verstehen. Menschen nicht vergessen.</h2>
+            <p>Meine Arbeit verbindet die analytische Perspektive auf KI und Organisationen mit fundiertem Wissen über emotionale Intelligenz, Coaching und menschliches Verhalten. Aus eigener Erfahrung weiß ich, wie wichtig es ist, Belastung nicht erst dann ernst zu nehmen, wenn Menschen bereits ausfallen.</p>
+            <p>Deshalb begleite ich Unternehmen auf einem Weg, der wirtschaftlich sinnvoll und menschlich tragfähig ist: verständlich, pragmatisch und ohne leere KI-Versprechen.</p>
+            <div className="about-credentials">
+              <span><GraduationCap size={20}/><b>Wissenschaftlich orientiert</b></span>
+              <span><Building2 size={20}/><b>Praxis für den Mittelstand</b></span>
+              <span><Heart size={20}/><b>Emotionale Gesundheit im Fokus</b></span>
+            </div>
+          </div>
+        </section>
+
+        <section className="marketing-section auth-section" id="anmelden">
+          <div className="auth-section-copy">
+            <span className="eyebrow"><LockKeyhole size={15}/> Geschützter App-Zugang</span>
+            <h2>Bereit für einen bewussteren Umgang mit KI?</h2>
+            <p>Testen Sie die App direkt im Demo-Modus oder melden Sie sich passwortlos an. Ihre persönlichen Einträge dienen Ihrer eigenen Reflexion und werden nicht zur Bewertung durch Arbeitgeber bereitgestellt.</p>
+            <div className="trust-list">
+              <span><Check size={17}/> Keine Diagnosen</span>
+              <span><Check size={17}/> Jederzeit löschbar</span>
+              <span><Check size={17}/> KI nur nach bewusstem Start</span>
+            </div>
+          </div>
+          <section className="auth-card" aria-labelledby="login-title">
+            <div className="auth-icon"><MessageCircleHeart size={28}/></div>
+            <h2 id="login-title">Zur KI Health App</h2>
+            <p>Sie erhalten einen sicheren Anmeldelink per E-Mail.</p>
+            <form onSubmit={sendMagicLink}>
+              <label htmlFor="email">E-Mail-Adresse</label>
+              <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@unternehmen.de" required/>
+              <button className="primary-button full" disabled={status === "sending"}>
+                {status === "sending" ? <LoaderCircle className="spin" size={18}/> : <ChevronRight size={18}/>}
+                Anmeldelink senden
+              </button>
+            </form>
+            {message && <div className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
+            <div className="divider"><span>oder</span></div>
+            <button className="secondary-button full" onClick={signInWithGoogle}>Mit Google anmelden</button>
+            <button className="text-button" onClick={onStartDemo}>Ohne Anmeldung im Demo-Modus testen</button>
+            <details className="auth-privacy"><summary>Datenschutz & Grenzen</summary><p>GitHub Pages liefert die Oberfläche aus, Supabase verarbeitet Anmeldung und private App-Daten. KI-Funktionen starten nur auf Ihren Klick. Freie Tagebuchnotizen werden nicht an das Sprachmodell übertragen. <a href={`${import.meta.env.BASE_URL}datenschutz.html`} target="_blank" rel="noreferrer">Datenschutzerklärung lesen</a></p></details>
+          </section>
+        </section>
+
+        <section className="marketing-cta">
+          <span>KI gesund im Unternehmen verankern</span>
+          <h2>Starten Sie klein. Lernen Sie schnell. Entlasten Sie nachhaltig.</h2>
+          <p>In einem unverbindlichen Gespräch klären wir, wo KI in Ihrem Unternehmen Zeit spart – und welche Leitplanken Ihr Team dafür braucht.</p>
+          <a className="primary-button" href="https://calendly.com/undercover_trainer/erstgesprach" target="_blank" rel="noreferrer">Unverbindliches Erstgespräch <ChevronRight size={18}/></a>
         </section>
       </main>
+
+      <footer className="marketing-footer">
+        <div className="footer-brand-block"><img src={`${import.meta.env.BASE_URL}undercover-trainer-logo.png`} alt="The Undercover Trainer"/><p>Gesunde KI-Kompetenz für Menschen und Unternehmen.</p></div>
+        <div><strong>Kontakt</strong><a href="mailto:trainer@the-undercover-trainer.com">trainer@the-undercover-trainer.com</a><a href="tel:+4917636721988">+49 176 36721988</a></div>
+        <div><strong>Rechtliches</strong><a href={`${import.meta.env.BASE_URL}datenschutz.html`} target="_blank" rel="noreferrer">Datenschutz</a><a href="https://the-undercover-trainer.com" target="_blank" rel="noreferrer">Impressum</a></div>
+        <p className="footer-copyright">© {new Date().getFullYear()} The Undercover Trainer · Rascha Al-Nemer</p>
+      </footer>
     </div>
   );
 }
@@ -680,7 +808,7 @@ function CheckInForm({ demoMode, session, onSaved }: { demoMode: boolean; sessio
       <header className="page-heading">
         <span className="eyebrow">Tägliche Reflexion</span>
         <h1>Wie war dein Tag mit KI?</h1>
-        <p>Es gibt keine richtigen oder falschen Antworten. Wähle, was sich heute passend anfühlt.</p>
+        <p>Es gibt keine richtigen oder falschen Antworten. Pro Kalendertag bleibt ein Eintrag gespeichert. Wenn du heute erneut speicherst, wird dein heutiger Check-in aktualisiert.</p>
       </header>
       <form className="checkin-form" onSubmit={submit}>
         <section className="card form-section">
@@ -723,11 +851,13 @@ function CheckInForm({ demoMode, session, onSaved }: { demoMode: boolean; sessio
   );
 }
 
-function Trends({ checkIns, toolSessions, selfChecks, focusSessions, demoMode }: { checkIns: CheckIn[]; toolSessions: ToolSession[]; selfChecks: SelfCheckResult[]; focusSessions: FocusSession[]; demoMode: boolean }) {
+function Trends({ checkIns, toolSessions, selfChecks, focusSessions, demoMode, onNavigate }: { checkIns: CheckIn[]; toolSessions: ToolSession[]; selfChecks: SelfCheckResult[]; focusSessions: FocusSession[]; demoMode: boolean; onNavigate: (view: View) => void }) {
   const [reflection, setReflection] = useState<AiReflection | null>(null);
   const [aiConsent, setAiConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const requiredCheckIns = MIN_HEALTH_REFLECTION_CHECK_INS;
+  const remainingCheckIns = Math.max(0, requiredCheckIns - checkIns.length);
   const chartData = useMemo(() => [...checkIns].reverse().map((item) => ({ ...item, date: formatDate(item.entry_date) })), [checkIns]);
   const toolChartData = useMemo(() => {
     const grouped = new Map<string, { name: string; minutes: number; effectiveness: number; burden: number; count: number }>();
@@ -741,8 +871,16 @@ function Trends({ checkIns, toolSessions, selfChecks, focusSessions, demoMode }:
   }, [toolSessions]);
 
   async function createReflection() {
-    setLoading(true);
     setError("");
+    if (checkIns.length < requiredCheckIns) {
+      setError(`Für die KI-Reflexion fehlen noch ${remainingCheckIns} Check-in${remainingCheckIns === 1 ? "" : "s"}.`);
+      return;
+    }
+    if (!aiConsent) {
+      setError("Bitte bestätige zuerst die einmalige Datenübertragung für diese KI-Reflexion.");
+      return;
+    }
+    setLoading(true);
     if (demoMode) {
       await new Promise((resolve) => setTimeout(resolve, 600));
       setReflection({
@@ -750,16 +888,23 @@ function Trends({ checkIns, toolSessions, selfChecks, focusSessions, demoMode }:
         summary: "In deinen bisherigen Demo-Einträgen zeigt sich ein vorsichtiger zeitlicher Zusammenhang. Das bedeutet nicht, dass die KI-Nutzung den Stress verursacht.",
         observations: ["Lernbezogene Nutzung wurde häufiger als hilfreich bewertet.", "An Tagen über 90 Minuten lag dein Stresswert meist höher."],
         reflection_questions: ["Welche Aufgabe wolltest du an den längeren Tagen lösen?", "Welche kurze Pause würde dir nach der KI-Nutzung guttun?"],
-        safety_note: "Diese Reflexion ist keine Diagnose und ersetzt keine professionelle Beratung.",
+        safety_note: "Diese KI-generierte Reflexion kann Fehler enthalten, ist keine Diagnose und sollte von dir oder einer geeigneten Person geprüft werden.",
       });
       setLoading(false);
       return;
     }
-    if (!supabase) return;
+    if (!supabase) {
+      setError("Die sichere Verbindung zur KI-Funktion ist momentan nicht verfügbar.");
+      setLoading(false);
+      return;
+    }
     const safeCheckIns = checkIns.slice(0, 14).map(({ entry_date, mood, stress, loneliness, sleep, ai_minutes, ai_purpose, ai_effect }) => ({ entry_date, mood, stress, loneliness, sleep, ai_minutes, ai_purpose, ai_effect }));
     const { data, error: functionError } = await supabase.functions.invoke("health-reflection", { body: { checkIns: safeCheckIns } });
-    if (functionError) setError("Die KI-Reflexion ist noch nicht eingerichtet oder momentan nicht erreichbar.");
-    else setReflection(data as AiReflection);
+    if (functionError || !isHealthReflection(data)) {
+      setError("Die KI-Reflexion konnte nicht sicher erstellt werden. Deine Check-ins bleiben gespeichert; bitte versuche es später erneut.");
+    } else {
+      setReflection(data);
+    }
     setLoading(false);
   }
 
@@ -803,10 +948,34 @@ function Trends({ checkIns, toolSessions, selfChecks, focusSessions, demoMode }:
 
       <section className="card ai-card">
         <div className="ai-card-header"><span className="ai-icon"><Sparkles size={24} /></span><div><span className="eyebrow">Optionale KI-Reflexion · KI klar gekennzeichnet</span><h2>Deine eigenen Angaben zusammengefasst</h2></div></div>
-        <div className="ai-transparency"><Scale size={19}/><div><strong>Was die KI tut – und was nicht</strong><p>Ein Sprachmodell fasst höchstens 14 von dir selbst eingegebene Zahlenwerte und Kategorien zusammen. Es erkennt keine Emotionen, bewertet keine Arbeitsleistung, trifft keine Entscheidung und übermittelt keine freien Tagebuchtexte. Du prüfst selbst, ob die Ausgabe für dich passt.</p></div></div>
-        {!reflection && <label className="consent-check ai-consent"><input type="checkbox" checked={aiConsent} onChange={(event) => setAiConsent(event.target.checked)}/><span>Ich möchte diese einzelne KI-Auswertung jetzt starten und weiß, dass das Ergebnis fehlerhaft sein kann. Meine freie Notiz wird nicht übertragen.</span></label>}
-        {!reflection && <button className="primary-button" onClick={createReflection} disabled={loading || checkIns.length < 3 || !aiConsent}>{loading ? <LoaderCircle className="spin" size={18} /> : <Brain size={18} />} Gekennzeichnete KI-Reflexion erstellen</button>}
-        {checkIns.length < 3 && <small>Mindestens drei Check-ins sind erforderlich.</small>}
+        <div className="ai-transparency"><Scale size={19}/><div><strong>Was die KI tut – und was nicht</strong><p>Ein Sprachmodell fasst höchstens 14 von dir selbst eingegebene Tages-Check-ins mit Zahlenwerten und Kategorien zusammen. Bei nur einem gespeicherten Tag beschreibt es ausschließlich diesen Eintrag; erst ab drei verschiedenen Tagen darf es vorsichtige zeitliche Muster benennen. Es erkennt keine Emotionen, bewertet keine Arbeitsleistung, trifft keine Entscheidung und übermittelt keine freien Tagebuchtexte.</p></div></div>
+        {!reflection && checkIns.length < requiredCheckIns && (
+          <div className="reflection-prerequisite" role="status">
+            <div className="reflection-prerequisite-copy">
+              <ShieldCheck size={21}/>
+              <div>
+                <strong>Noch ein Check-in bis zur KI-Reflexion</strong>
+                <p>Sobald du einen Tages-Check-in gespeichert hast, kannst du eine einmalige KI-Reflexion erstellen.</p>
+              </div>
+            </div>
+            <div className="reflection-progress" aria-label={`${checkIns.length} von ${requiredCheckIns} Check-ins vorhanden`}>
+              <span style={{ width: `${Math.min(100, (checkIns.length / requiredCheckIns) * 100)}%` }}/>
+            </div>
+            <button className="secondary-button" onClick={() => onNavigate("checkin")}><Plus size={18}/> Check-in hinzufügen</button>
+          </div>
+        )}
+        {!reflection && checkIns.length >= requiredCheckIns && (
+          <div className="ai-reflection-actions">
+            {checkIns.length < 3 && (
+              <p className="caveat reflection-data-note">Aktuell ist {checkIns.length === 1 ? "ein gespeicherter Tag" : `${checkIns.length} gespeicherte Tage`} vorhanden. Die KI darf deshalb nur diese Angaben beschreiben und noch keinen längerfristigen Trend ableiten.</p>
+            )}
+            <label className="consent-check ai-consent">
+              <input type="checkbox" checked={aiConsent} onChange={(event) => { setAiConsent(event.target.checked); setError(""); }}/>
+              <span>Ich möchte aus meinen vorhandenen Check-ins einmalig eine KI-Reflexion erstellen. Dafür werden höchstens 14 Check-ins mit Zahlenwerten und Kategorien an OpenAI übermittelt. Freie Notizen werden nicht übertragen. Mir ist bewusst, dass die Ausgabe fehlerhaft sein kann.</span>
+            </label>
+            <button className="primary-button" onClick={createReflection} disabled={loading || !aiConsent}>{loading ? <LoaderCircle className="spin" size={18} /> : <Brain size={18} />} Einmalige KI-Reflexion erstellen</button>
+          </div>
+        )}
         {error && <div className="form-message error">{error}</div>}
         {reflection && (
           <div className="reflection-result">
