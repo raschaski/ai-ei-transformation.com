@@ -153,6 +153,11 @@ export function ContactModal({ open, demoMode, session, initialContact, required
         {!requiredForAccess && <button className="modal-close" type="button" onClick={onClose} aria-label="Kontaktfenster schließen">
           <X size={21} />
         </button>}
+        {requiredForAccess && demoMode && (
+          <button className="modal-back-to-website" type="button" onClick={onClose}>
+            Zur Website
+          </button>
+        )}
         <span className="eyebrow">{requiredForAccess ? "Bevor du startest" : "Datenschutz & Kontakt"}</span>
         <h2 id="contact-modal-title">{requiredForAccess ? "Deine Angaben und Einwilligungen" : "Kontaktdaten verwalten"}</h2>
         <p id="contact-modal-description">
@@ -248,7 +253,7 @@ export function ContactModal({ open, demoMode, session, initialContact, required
             {status === "saving" ? <LoaderCircle className="spin" size={18} /> : <Check size={18} />}
             {requiredForAccess ? "Auswahl speichern und App starten" : "Auswahl speichern"}
           </button>
-          {requiredForAccess && <button className="text-button" type="button" onClick={onClose}>{demoMode ? "Demo beenden" : "Abmelden"}</button>}
+          {requiredForAccess && !demoMode && <button className="text-button" type="button" onClick={onClose}>Abmelden</button>}
           {message && <div role="status" className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
         </form>
       </section>

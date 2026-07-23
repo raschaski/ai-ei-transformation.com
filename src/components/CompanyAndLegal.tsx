@@ -28,10 +28,11 @@ export function CompanyView() {
 }
 
 export function ImprintView() {
-  return <LegalLayout title="Impressum" updated="Stand: 21. Juli 2026">
+  return <LegalLayout title="Impressum" updated="Stand: 23. Juli 2026">
     <h2>Angaben gemäß § 5 DDG</h2><p>Rascha Al-Nemer<br/>The-Undercover-Trainer<br/>Rathausstraße 132<br/>68519 Viernheim<br/>Deutschland</p>
-    <h2>Kontakt</h2><p>Telefon: <a href="tel:+4917636721988">+49 176 36721988</a><br/>E-Mail: <a href="mailto:trainer@the-undercover-trainer.com">trainer@the-undercover-trainer.com</a><br/>Website: <a href="https://the-undercover-trainer.com" target="_blank" rel="noreferrer">the-undercover-trainer.com</a></p>
-    <h2>Verbraucherstreitbeilegung</h2><p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
+    <h2>Kontakt</h2><p>Telefon: <a href="tel:+4917636721988">+49 176 36721988</a><br/>E-Mail: <a href="mailto:trainer@the-undercover-trainer.com">trainer@the-undercover-trainer.com</a></p>
+    <h2>Verantwortlich für redaktionelle Inhalte</h2><p>Rascha Al-Nemer, Rathausstraße 132, 68519 Viernheim. Verantwortlich im Sinne des § 18 Abs. 2 MStV, soweit journalistisch-redaktionelle Inhalte angeboten werden.</p>
+    <h2>Verbraucherstreitbeilegung</h2><p>Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
     <h2>Haftung für Inhalte und Links</h2><p>Wir erstellen die Inhalte dieser App mit Sorgfalt. Allgemeine Reflexions- und Selbsthilfehinweise ersetzen keine medizinische, psychologische oder rechtliche Beratung. Für Inhalte externer Links sind ausschließlich deren Betreiber verantwortlich.</p>
   </LegalLayout>;
 }

@@ -280,9 +280,15 @@ function App() {
           <button className="contact-button desktop-only" onClick={() => setContactOpen(true)}>
             <MessageCircleHeart size={17} /> Kontakt
           </button>
-          <button className="icon-button desktop-only" onClick={signOut} aria-label="Abmelden">
-            <LogOut size={19} />
-          </button>
+          {demoMode ? (
+            <button className="back-to-website desktop-only" onClick={signOut}>
+              <LogOut size={17} /> Zur Website
+            </button>
+          ) : (
+            <button className="icon-button desktop-only" onClick={signOut} aria-label="Abmelden">
+              <LogOut size={19} />
+            </button>
+          )}
           <button className="icon-button mobile-only" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menü öffnen">
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
@@ -297,7 +303,7 @@ function App() {
             </button>
           ))}
           <button onClick={() => { setContactOpen(true); setMenuOpen(false); }}><MessageCircleHeart size={19} /> Kontakt & Zustimmung</button>
-          <button onClick={signOut}><LogOut size={19} /> Abmelden</button>
+          <button onClick={signOut}><LogOut size={19} /> {demoMode ? "Zur Website" : "Abmelden"}</button>
         </nav>
       )}
 
@@ -553,10 +559,10 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
               <li><Check size={18}/> Private Check-ins statt Leistungsüberwachung</li>
               <li><Check size={18}/> Fokuszeiten und tatsächliche Zeitersparnis erfassen</li>
               <li><Check size={18}/> Passende KI-Tools für konkrete Aufgaben einordnen</li>
-              <li><Check size={18}/> Demo-Modus ohne Konto oder Backend testen</li>
+              <li><Check size={18}/> KI Health App direkt testen</li>
             </ul>
             <div className="marketing-hero-actions">
-              <button className="primary-button" onClick={onStartDemo}>App-Demo öffnen <ChevronRight size={18}/></button>
+              <button className="primary-button" onClick={onStartDemo}>App testen <ChevronRight size={18}/></button>
               <a className="secondary-button" href="#anmelden">Bereits registriert</a>
             </div>
             <p className="caveat">Die App ist ein Reflexionswerkzeug, kein Medizinprodukt und kein Instrument für Personalentscheidungen.</p>
@@ -584,7 +590,7 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
           <div className="auth-section-copy">
             <span className="eyebrow"><LockKeyhole size={15}/> Geschützter App-Zugang</span>
             <h2>Bereit für einen bewussteren Umgang mit KI?</h2>
-            <p>Testen Sie die App direkt im Demo-Modus oder melden Sie sich passwortlos an. Ihre persönlichen Einträge dienen Ihrer eigenen Reflexion und werden nicht zur Bewertung durch Arbeitgeber bereitgestellt.</p>
+            <p>Testen Sie die KI Health App oder melden Sie sich für Ihren persönlichen Zugang an. Ihre Einträge dienen Ihrer eigenen Reflexion und werden nicht zur Bewertung durch Arbeitgeber bereitgestellt.</p>
             <div className="trust-list">
               <span><Check size={17}/> Keine Diagnosen</span>
               <span><Check size={17}/> Jederzeit löschbar</span>
@@ -606,7 +612,7 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
             {message && <div className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
             <div className="divider"><span>oder</span></div>
             <button className="secondary-button full" onClick={signInWithGoogle}>Mit Google anmelden</button>
-            <button className="text-button" onClick={onStartDemo}>Ohne Anmeldung im Demo-Modus testen</button>
+            <button className="text-button" onClick={onStartDemo}>App testen</button>
             <details className="auth-privacy"><summary>Datenschutz & Grenzen</summary><p>GitHub Pages liefert die Oberfläche aus, Supabase verarbeitet Anmeldung und private App-Daten. KI-Funktionen starten nur auf Ihren Klick. Freie Tagebuchnotizen werden nicht an das Sprachmodell übertragen. <a href={`${import.meta.env.BASE_URL}datenschutz.html`} target="_blank" rel="noreferrer">Datenschutzerklärung lesen</a></p></details>
           </section>
         </section>
@@ -620,9 +626,9 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
       </main>
 
       <footer className="marketing-footer">
-        <div className="footer-brand-block"><img src={`${import.meta.env.BASE_URL}undercover-trainer-logo.png`} alt="The Undercover Trainer"/><p>Gesunde KI-Kompetenz für Menschen und Unternehmen.</p></div>
+        <div className="footer-brand-block"><span className="footer-wordmark">The Undercover Trainer</span><p>Gesunde KI-Kompetenz für Menschen und Unternehmen.</p></div>
         <div><strong>Kontakt</strong><a href="mailto:trainer@the-undercover-trainer.com">trainer@the-undercover-trainer.com</a><a href="tel:+4917636721988">+49 176 36721988</a></div>
-        <div><strong>Rechtliches</strong><a href={`${import.meta.env.BASE_URL}datenschutz.html`} target="_blank" rel="noreferrer">Datenschutz</a><a href="https://the-undercover-trainer.com" target="_blank" rel="noreferrer">Impressum</a></div>
+        <div><strong>Rechtliches</strong><a href={`${import.meta.env.BASE_URL}datenschutz.html`}>Datenschutz</a><a href={`${import.meta.env.BASE_URL}impressum.html`}>Impressum</a></div>
         <p className="footer-copyright">© {new Date().getFullYear()} The Undercover Trainer · Rascha Al-Nemer</p>
       </footer>
     </div>

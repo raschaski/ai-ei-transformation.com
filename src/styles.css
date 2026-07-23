@@ -39,6 +39,8 @@ p { color: var(--muted); line-height: 1.7; }
 .nav-link { height: 100%; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: none; font-weight: 600; padding: 0 .15rem; }
 .nav-link:hover, .nav-link.active { color: var(--green-dark); border-bottom-color: var(--green); }
 .topbar-actions { display: flex; align-items: center; gap: .7rem; }
+.back-to-website { min-height: 40px; display: inline-flex; align-items: center; gap: .45rem; padding: .6rem .9rem; border: 1px solid var(--green); border-radius: 999px; color: var(--green-dark); background: white; font-size: .8rem; font-weight: 800; }
+.back-to-website:hover { color: white; background: var(--green-dark); border-color: var(--green-dark); }
 .contact-button { min-height: 40px; display: inline-flex; align-items: center; gap: .4rem; padding: .55rem .85rem; border: 1px solid var(--line); border-radius: 999px; color: var(--green-dark); background: white; font-size: .78rem; font-weight: 700; }
 .contact-button:hover { border-color: var(--green); }
 .welcome-actions { display: flex; align-items: center; gap: .7rem; }
@@ -235,7 +237,7 @@ p { color: var(--muted); line-height: 1.7; }
 .marketing-cta p { max-width: 650px; margin: 0 auto 1.5rem; color: #b4d0cd; line-height: 1.7; }
 .marketing-cta .primary-button { display: inline-flex; text-decoration: none; background: #74d6cb; color: #062b2d; }
 .marketing-footer { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 2rem; padding: 3rem max(1.5rem, calc((100vw - 1180px) / 2)); color: #a7c2c0; background: #061f21; }
-.marketing-footer img { width: 210px; max-width: 100%; filter: brightness(0) invert(1); opacity: .85; }
+.footer-wordmark { display: block; color: white; font: 600 1.65rem/1.1 "Newsreader", Georgia, serif; letter-spacing: -.02em; }
 .marketing-footer p { line-height: 1.6; }
 .marketing-footer strong, .marketing-footer a { display: block; margin-bottom: .65rem; }
 .marketing-footer strong { color: white; }
@@ -266,6 +268,8 @@ body.modal-open { overflow: hidden; }
 .contact-modal > p { margin-bottom: 1.25rem; }
 .modal-close { position: absolute; top: 1rem; right: 1rem; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: white; }
 .modal-close:hover { color: var(--green-dark); border-color: var(--green); }
+.modal-back-to-website { position: sticky; top: 0; z-index: 2; width: fit-content; display: flex; margin: -.3rem 0 1rem auto; padding: .58rem .9rem; border: 1px solid var(--green); border-radius: 999px; color: var(--green-dark); background: white; font-size: .8rem; font-weight: 800; }
+.modal-back-to-website:hover { color: white; background: var(--green-dark); }
 .contact-form { display: grid; gap: .55rem; }
 .contact-form > label:not(.consent-check) { margin-top: .35rem; color: var(--ink); font-size: .86rem; font-weight: 700; }
 .contact-form > label small { color: var(--muted); font-weight: 500; }
