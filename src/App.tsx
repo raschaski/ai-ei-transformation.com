@@ -114,7 +114,7 @@ function formatDate(date: string) {
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
-  const [demoMode, setDemoMode] = useState(!isSupabaseConfigured);
+  const [demoMode, setDemoMode] = useState(false);
   const [view, setView] = useState<View>("overview");
   const [checkIns, setCheckIns] = useState<CheckIn[]>(demoMode ? demoCheckIns : []);
   const [toolSessions, setToolSessions] = useState<ToolSession[]>(demoMode ? demoToolSessions : []);
