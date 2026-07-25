@@ -3,8 +3,13 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL?.trim() ||
+  "https://ahyxzrvdxmakxmnwkpzc.supabase.co";
+
+const supabasePublishableKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  "sb_publishable_Vuzti8g4jRnOepKCSQYF8A_RW7F6Qtk";
 const nativeRedirectUrl = "com.theundercovertrainer.mindfulai://auth-callback";
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
