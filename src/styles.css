@@ -554,3 +554,6 @@ footer p { margin: .3rem 0 0; font-size: .75rem; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+.hero-secondary-link { margin-top: 0.75rem; font-size: 0.9rem; text-align: center; }
+.hero-secondary-link a { color: #168d95; }
+.auth-email-hint { font-size: 0.85rem; color: #5b7a7c; margin-top: 0.5rem; }
