@@ -485,9 +485,10 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
             <h1>KI soll entlasten.<br/><em>Nicht überfordern.</em></h1>
             <p className="marketing-lead">Nutzen Sie KI-Tools so, dass sie messbar Zeit und Kosten sparen – ohne Ihre Mitarbeitenden in Tool-Chaos, Dauerbeschleunigung und mentaler Überlastung zu verlieren.</p>
             <div className="marketing-hero-actions">
-              <a className="primary-button" href="https://calendly.com/undercover_trainer/erstgesprach" target="_blank" rel="noreferrer">Potenzialgespräch buchen <ChevronRight size={18}/></a>
-              <button className="secondary-button" onClick={onStartDemo}>KI Health App testen</button>
+              <a className="primary-button" href="#anmelden">Zur KI Health App <ChevronRight size={18}/></a>
+              <button className="secondary-button" onClick={onStartDemo}>Erst unverbindlich testen</button>
             </div>
+            <p className="hero-secondary-link"><a href="https://calendly.com/undercover_trainer/erstgesprach" target="_blank" rel="noreferrer">Oder Potenzialgespräch für Unternehmen buchen <ChevronRight size={14}/></a></p>
             <div className="hero-proof">
               <span><Check size={17}/> Praxisnah für KMU</span>
               <span><Check size={17}/> Datenschutzorientiert</span>
@@ -611,6 +612,8 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
             </form>
             {message && <div className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
             <div className="divider"><span>oder</span></div>
+            {message && <div className={status === "error" ? "form-message error" : "form-message"}>{message}</div>}
+            <p className="auth-email-hint">Die Anmelde-E-Mail kommt von <strong>Supabase Auth</strong>. Bitte prüfen Sie bei Nichterhalt auch Ihren Spam- oder Werbeordner.</p>
             <button className="secondary-button full" onClick={signInWithGoogle}>Mit Google anmelden</button>
             <button className="text-button" onClick={onStartDemo}>App testen</button>
             <details className="auth-privacy"><summary>Datenschutz & Grenzen</summary><p>GitHub Pages liefert die Oberfläche aus, Supabase verarbeitet Anmeldung und private App-Daten. KI-Funktionen starten nur auf Ihren Klick. Freie Tagebuchnotizen werden nicht an das Sprachmodell übertragen. <a href={`${import.meta.env.BASE_URL}datenschutz.html`} target="_blank" rel="noreferrer">Datenschutzerklärung lesen</a></p></details>
