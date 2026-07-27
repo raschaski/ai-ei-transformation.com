@@ -557,3 +557,6 @@ footer p { margin: .3rem 0 0; font-size: .75rem; line-height: 1.4; }
 .hero-secondary-link { margin-top: 0.75rem; font-size: 0.9rem; text-align: center; }
 .hero-secondary-link a { color: #168d95; }
 .auth-email-hint { font-size: 0.85rem; color: #5b7a7c; margin-top: 0.5rem; }
+.about-more-link { margin-top: 1.25rem; font-size: 0.9rem; color: #4a6567; }
+.about-more-link a { color: #168d95; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 2px; }
+.about-more-link a:hover { text-decoration: underline; }
