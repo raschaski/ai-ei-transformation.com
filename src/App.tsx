@@ -584,6 +584,12 @@ function Welcome({ onStartDemo }: { onStartDemo: () => void }) {
               <span><Building2 size={20}/><b>Praxis für den Mittelstand</b></span>
               <span><Heart size={20}/><b>Emotionale Gesundheit im Fokus</b></span>
             </div>
+            <p className="about-more-link">
+              Hier finden Sie <a href="https://the-undercover-trainer.com/startseite.html" target="_blank" rel="noreferrer">weitere Informationen über mich und meine Expertisen <ChevronRight size={14}/></a>
+            </p>
+            <p className="about-more-link">
+              Hier finden Sie <a href="https://alfima.com/rascha" target="_blank" rel="noreferrer">weitere digitale Produkte <ChevronRight size={14}/></a>
+            </p>
           </div>
         </section>
 
@@ -722,8 +728,8 @@ function BrandStory() {
         <span className="eyebrow"><Sparkles size={15} /> Über The Undercover Trainer</span>
         <h2 id="brand-story-title">Rascha Al-Nemer</h2>
         <p>
-          Rascha Al-Nemer ist Mentalcoach, Kommunikationstrainerin und Speakerin mit dem Schwerpunkt
-          emotionale Gesundheit. Seit der Gründung ihres Unternehmens im Jahr 2020 begleitet sie Menschen
+          Rascha Al-Nemer ist Mentalcoach,KI-Managerin,Kommunikationstrainerin und Speakerin mit dem Schwerpunkt
+          emotionale Gesundheit im KI-Zeitalter. Seit der Gründung ihres Unternehmens im Jahr 2020 begleitet sie Menschen
           und Unternehmen mit Trainings, Vorträgen und Coachings.
         </p>
         <p>
@@ -733,6 +739,7 @@ function BrandStory() {
         </p>
         <div className="brand-story-actions">
           <a className="secondary-button" href="https://the-undercover-trainer.com/ueber_uns.html" target="_blank" rel="noreferrer">Mehr über Rascha</a>
+          <a className="secondary-button" href="https://alfima.com/rascha" target="_blank" rel="noreferrer">Weitere digitale Produkte</a>
           <a className="text-link" href="mailto:trainer@the-undercover-trainer.com">Kontakt aufnehmen <ChevronRight size={17} /></a>
         </div>
       </div>
