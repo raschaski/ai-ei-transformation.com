@@ -103,7 +103,29 @@ export function ToolNavigator({ demoMode, session, onSaved }: { demoMode: boolea
   const [burden, setBurden] = useState(2);
   const [notes, setNotes] = useState("");
   const [aiConsent, setAiConsent] = useState(false);
-  const [aiAdvice, setAiAdvice] = useState<AiToolAdvice | null>(null);
+ const [aiAdvice, setAiAdvice] = useState<AiToolAdvice | null>(() => {
+  const savedAdvice = localStorage.getItem("toolNavigatorLastResult");
+
+  if (!savedAdvice) {
+    return null;
+  }
+
+  try {
+    const parsedAdvice: unknown = JSON.parse(savedAdvice);
+    return isAiToolAdvice(parsedAdvice) ? parsedAdvice : null;
+  } catch {
+    localStorage.removeItem("toolNavigatorLastResult");
+    return null;
+  }
+});
+  useEffect(() => {
+  if (aiAdvice) {
+    localStorage.setItem(
+      "toolNavigatorLastResult",
+      JSON.stringify(aiAdvice)
+    );
+  }
+}, [aiAdvice]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const startedAt = useRef<string | null>(null);
@@ -115,6 +137,9 @@ export function ToolNavigator({ demoMode, session, onSaved }: { demoMode: boolea
     return () => window.clearInterval(timer);
   }, [active]);
 
+    );
+  }
+}, [aiAdvice]);
   function startTracking(tool: TrackedTool) {
     setSelectedTool(tool);
     setElapsed(0);
@@ -196,7 +221,7 @@ export function ToolNavigator({ demoMode, session, onSaved }: { demoMode: boolea
         <article className="card problem-card">
           <span className="soft-icon"><Target size={22}/></span><h2>Was möchtest du erreichen?</h2>
           <label className="input-group">Aufgabe oder Problem
-            <textarea rows={7} maxLength={1000} value={problem} onChange={(event) => { setProblem(event.target.value); setAiAdvice(null); setAiConsent(false); setAiError(""); }} placeholder="Zum Beispiel: Ich möchte aus meinen eigenen Stichpunkten eine verständliche Präsentationsgliederung für mein Team entwickeln …"/>
+            <textarea rows={7} maxLength={1000} value={problem} onChange={(event) => { setProblem(event.target.value);setAiConsent(false); setAiError(""); }} placeholder="Zum Beispiel: Ich möchte aus meinen eigenen Stichpunkten eine verständliche Präsentationsgliederung für mein Team entwickeln …"/>
             <small>{problem.length}/1000 Zeichen</small>
           </label>
           {sensitive && <div className="warning-inline"><AlertTriangle size={18}/><span>Der Text sieht nach Kontaktdaten, Zugangsdaten oder anderen sensiblen Angaben aus. Bitte anonymisiere ihn vor einer KI-Übertragung.</span></div>}
