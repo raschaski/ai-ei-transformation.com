@@ -136,10 +136,6 @@ export function ToolNavigator({ demoMode, session, onSaved }: { demoMode: boolea
     const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
   }, [active]);
-
-    );
-  }
-}, [aiAdvice]);
   function startTracking(tool: TrackedTool) {
     setSelectedTool(tool);
     setElapsed(0);
